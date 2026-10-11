@@ -15,7 +15,7 @@ const python = resolve(root, '.venv', process.platform === 'win32' ? 'Scripts/py
 const npmCmd = process.platform === 'win32' ? execFileSync('where.exe', ['npm.cmd'], { encoding: 'utf8' }).trim().split(/\r?\n/)[0] : null;
 const npmCli = npmCmd ? resolve(dirname(npmCmd), 'node_modules/npm/bin/npm-cli.js') : process.env.npm_execpath;
 assert.ok(npmCli && existsSync(npmCli), 'npm CLI is required');
-const dataset = process.env.BOILER_DATASET_PATH ?? resolve(root, 'data/raw', readdirSync(resolve(root, 'data/raw')).find(name => name.endsWith('.csv')));
+const dataset = process.env.BOILER_DATASET_PATH ?? execFileSync(python, ['-X', 'utf8', 'scripts/dataset_path.py'], { cwd: root, encoding: 'utf8' }).trim();
 const settings = readFileSync(resolve(root, '.env.example'), 'utf8').split(/\r?\n/).filter(line => line && !line.startsWith('#')).map(line => line.split(/=(.*)/s).slice(0, 2));
 const values = Object.fromEntries(settings);
 Object.assign(values, { BOILER_DATASET_PATH: dataset, KAFKA_BOOTSTRAP_SERVERS: '127.0.0.1:19093', KAFKA_HOST_PORT: '19093',
@@ -92,7 +92,7 @@ try {
   await poll(async () => Number(await page.getByTestId('sequence').textContent()) >= 3, 'LIVE telemetry');
   assert.match(await page.getByTestId('stream-status').textContent(), /LIVE/);
   await page.getByRole('button', { name: '화면 자동 갱신 일시정지', exact: true }).click();
-  await page.getByTestId('marker-총 주증기 유량').click();
+  await page.getByTestId('kpi-총 주증기 유량').click();
   const shown = { source_time: await page.getByTestId('inspector-time').textContent(), value: await page.getByTestId('inspector-value').textContent(), tag: '총 주증기 유량' };
   const original = JSON.parse(execFileSync(python, ['-c', 'import csv,json,sys; f=open(sys.argv[1],encoding="utf-8-sig",newline=""); row=next(r for r in csv.DictReader(f) if r["일자"]==sys.argv[2]); print(json.dumps({"raw":row[sys.argv[3]]}))', dataset, shown.source_time, shown.tag], { encoding: 'utf8', env }));
   assert.equal(shown.value, Number(original.raw).toLocaleString('en-US'));

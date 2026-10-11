@@ -90,7 +90,7 @@ footer a { display: inline-flex; align-items: center; text-decoration: underline
   .responsive-table thead { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
   .responsive-table tr { border-top: 2px solid #c5d1c1; padding: 8px 0; }
   .responsive-table td { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; padding: 8px 0; }
-  .responsive-table td::before { content: attr(data-label); font-family: sans-serif; }
+  .responsive-table td::before { content: attr(data-label); font-family: 'Pretendard Variable', sans-serif; }
   .decision-buttons { flex-direction: column; }
   .proposal { padding: 12px; }
 }

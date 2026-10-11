@@ -16,7 +16,7 @@ async function tabTo(page, target) {
   throw new Error(`Keyboard could not reach ${await target.textContent()}`);
 }
 
-async function inspect(page, label, out) {
+export async function inspect(page, label, out) {
   const findings = await page.evaluate(() => {
     const visible = element => element.getClientRects().length && getComputedStyle(element).visibility !== 'hidden';
     const controls = [...document.querySelectorAll('button, input, textarea, select')].filter(visible);
@@ -73,12 +73,12 @@ export async function reviewApplication(page, context, out = output) {
   const home = new URL('/', page.url()).href;
   await page.setViewportSize({ width: 1280, height: 900 });
   await page.goto(home);
-  await page.getByRole('button', { name: '02 Furnace', exact: true }).waitFor();
+  await page.getByRole('button', { name: '02 화로', exact: true }).waitFor();
   await page.keyboard.press('Tab');
   assert.equal(await page.getByRole('link', { name: '본문으로 건너뛰기' }).evaluate(element => element === document.activeElement), true);
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#main').evaluate(element => element === document.activeElement), true);
-  await tabTo(page, page.getByRole('button', { name: '02 Furnace', exact: true }));
+  await tabTo(page, page.getByRole('button', { name: '02 화로', exact: true }));
   await page.keyboard.press('Enter');
   await page.getByTestId('inspector-tag').waitFor();
   await inspect(page, 'app-desktop', out);
@@ -127,7 +127,9 @@ async function reviewDocumentation() {
   mkdirSync(output, { recursive: true });
   const publicFiles = new Map([
     ['/docs/index.html', ['docs/index.html', 'text/html; charset=utf-8']],
-    ...['dashboard', 'login', 'simulator', 'agent-answer'].map(name => [`/docs/images/${name}.jpg`, [`docs/images/${name}.jpg`, 'image/jpeg']]),
+    ...['dashboard', 'login', 'simulator', 'agent-answer', 'workspace', 'ai-drawer', 'simulator-drawer', 'audit-drawer', 'workspace-mobile'].map(name => [`/docs/images/${name}.jpg`, [`docs/images/${name}.jpg`, 'image/jpeg']]),
+    ['/docs/fonts/pretendard.css', ['docs/fonts/pretendard.css', 'text/css']],
+    ['/docs/fonts/PretendardVariable.woff2', ['docs/fonts/PretendardVariable.woff2', 'font/woff2']],
     ['/docs/404.html', ['docs/404.html', 'text/html; charset=utf-8']],
     ['/frontend/public/favicon.svg', ['frontend/public/favicon.svg', 'image/svg+xml']],
   ]);
@@ -186,6 +188,14 @@ async function reviewDocumentation() {
     await page.keyboard.press('Escape');
     assert.equal(await answerReview.evaluate(element => element === document.activeElement), true);
     results.checks.push('Five-question Agent report opens in-page; mobile reader fits; focus returns to report button');
+    await page.locator('button[data-doc="docs/results/phase7-workspace.md"]').first().click();
+    await page.getByRole('dialog').getByRole('heading', { name: '단위의 출처와 데이터 경계', exact: true }).waitFor();
+    assert.ok((await page.getByRole('dialog').innerText()).includes('118'));
+    await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
+    await inspect(page, 'docs-workspace-review-320', output);
+    assert.equal(await page.getByRole('dialog').evaluate(element => element.scrollWidth > element.clientWidth + 1), false);
+    await page.keyboard.press('Escape');
+    results.checks.push('Workspace result, source units and screenshots open in the same page at 320px');
     assert.deepEqual(downloads, []);
     results.checks.push('Rendered README and audit tables; source preview; Escape closes dialogs; no downloads');
     await page.reload();

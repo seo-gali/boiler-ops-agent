@@ -82,7 +82,9 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
     start_row: forecastModel.test_start_row, tag, model: null, questions: [], passed: false };
   const save = () => writeFileSync(resolve(out, 'questions.json'), JSON.stringify(report, null, 2));
   try {
-    await page.getByRole('button', { name: `센서 ${tag}`, exact: false }).click();
+    await page.getByRole('button', { name: '04 재열기', exact: true }).click();
+    await page.getByLabel('선택 센서', { exact: true }).selectOption(tag);
+    await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
     await poll(async () => await page.getByTestId('sequence').textContent() === '16', 'agent review source sequence');
     for (const [intent, question] of questions) {
       const entry = { intent, question, request: { question, equipment: 'reheater', tag } };
@@ -164,8 +166,8 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
       assert.ok(report.questions.every(entry => entry.semantic_passed), 'Every answer meets the five question criteria');
       report.edge_cases = [];
       async function edge(name, sensor, question, verify) {
-        await page.getByLabel('센서 Tag 검색', { exact: true }).fill(sensor);
-        await page.getByRole('complementary', { name: '센서 상세' }).getByRole('button', { name: sensor, exact: false }).click();
+        await page.locator('#open-agent').click();
+        await page.getByLabel('선택 센서', { exact: true }).selectOption(sensor);
         await page.getByLabel('질문', { exact: true }).fill(question);
         const pending = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
         const started = performance.now();

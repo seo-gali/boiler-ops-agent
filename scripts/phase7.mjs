@@ -80,23 +80,24 @@ export async function validateFailures({ page, context, env, out, root, python, 
   }
   const registry = await json('/api/registry');
   for (const equipment of registry.equipment) {
-    const tag = Object.values(registry.sensors).find(sensor => sensor.equipment === equipment.id && sensor.scene_position && sensor.representative)?.tag;
+    const tag = equipment.primary_tag;
     if (!tag) continue;
-    await page.getByRole('button', { name: `센서 ${tag}`, exact: false }).click();
+    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
+    await page.getByLabel('선택 센서', { exact: true }).selectOption(tag);
     const value = await page.getByTestId('inspector-value').textContent();
     assert.ok((await page.getByTestId(`marker-${tag}`).textContent()).includes(value));
     assert.equal(await page.getByTestId('inspector-tag').textContent(), tag);
   }
   const loss = await context.newPage();
   await loss.goto(frontendUrl);
-  await loss.getByRole('button', { name: '센서 총 주증기 유량', exact: false }).waitFor();
+  await loss.getByRole('button', { name: '센서 최종과열기 출구 온도 평균값', exact: false }).waitFor();
   await loss.evaluate(() => {
     const canvas = document.querySelector('canvas');
     const gl = canvas.getContext('webgl2');
     gl.getExtension('WEBGL_lose_context').loseContext();
   });
   await loss.getByText('3D VIEW UNAVAILABLE').waitFor();
-  await loss.getByRole('button', { name: '02 Furnace', exact: true }).click();
+  await loss.getByRole('button', { name: '02 화로', exact: true }).click();
   await loss.getByTestId('inspector-tag').waitFor();
   await loss.close();
   pass('Corrupt Registry/Scene positions reject; all equipment markers match Inspector; actual WebGL loss falls back');

@@ -2,8 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { SessionGate } from './session';
+import '../../docs/fonts/pretendard.css';
 import './styles.css';
 import './accessibility.css';
+import './workspace.css';
 import { NotFound } from './NotFound';
 
 const isHome = location.pathname === '/' || location.pathname === '/index.html';

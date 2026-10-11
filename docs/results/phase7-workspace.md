@@ -1,0 +1,101 @@
+# Phase 7 — 작업 화면과 단위 근거
+
+2026-10-11 20:42:46~20:43:32 KST, 실제 CSV·Kafka·API·Ollama·Chromium을 연결한 작업 화면 E2E **11개 항목을 모두 통과했다.** 한글 설비 탐색·계통도 이동·운전 도우미와 118개 센서의 단위 근거를 확인했다.
+
+## 구현한 화면
+
+- 급탄기·화로·과열기·재열기·절탄기·탈질 설비·굴뚝의 한글 이름과 설명을 제공한다. 도형, 센서 표시, 아래 설비 목록은 Registry의 같은 `primary_tag`를 선택한다.
+- 계통도 위에서 `Space + 드래그`로 이동하고 `Space + 휠`로 확대·축소한다. 방향·확대 버튼과 `보기 초기화`, 키보드 설비 선택도 제공한다. 고정 시점은 유지한다.
+- 상단 메뉴를 스크롤 중에도 유지한다. `AI 질문`, `승인 연습`, `변경 기록`은 오른쪽 운전 도우미를 연다. 작은 화면에서는 아래쪽 패널로 바뀐다.
+- 도우미의 `센서 상세`에는 현재값·원본값·원본 시각·단위 근거·원본 식별자·최근 추이를 표시한다. 도우미에서 선택한 센서와 계통도의 선택을 함께 갱신한다.
+- 같은 센서에서 탭을 이동하거나 닫았다 열어도 질문 상태를 보존한다. 다른 센서를 고르면 이전 질문과 근거를 초기화하며, 늦게 도착한 이전 응답을 새 센서에 연결하지 않는다.
+- 센서 선택과 도우미 열기는 질문 전송이나 Simulator 승인을 실행하지 않는다. 질문 전송과 제안 결정은 사용자가 각각 누른다.
+- AI 답변의 `조회 근거·도구 기록 보기`는 모델·처리 시간·질문·도구 결과를 페이지 안에서 펼친다. `변경 기록`은 본인 제안의 생성·승인·실행·거절 기록과 상세를 조회한다. 로딩·빈 결과·실패·재시도를 표시한다.
+- 닫기 버튼·Escape·포커스 복귀와 탭 방향키 이동을 제공한다. 앱과 안내 페이지는 저장소에 포함한 Pretendard를 사용한다.
+
+## 단위의 출처와 데이터 경계
+
+`CustomExcelView.xlsx`의 정의와 CSV 센서명 **118개를 원문 그대로 일치**시켜 `backend/app/domain/sensor_definitions.json`에 저장했다. 원본 센서명의 뒤 공백도 식별자에 보존한다. 표시용 이름의 공백 제거와 원본 식별자를 구분한다.
+
+| 주요 지표 | 표시 단위 |
+| --- | --- |
+| 실제 출력값 | MW |
+| 목표 발전량 | MW |
+| 총 주증기 유량 | T/H |
+| 터빈용 주증기 압력 | kg/cm2g |
+| 최종과열기 출구 온도 평균값 | °C |
+| 배기가스 산소 중간값 | % |
+
+단위 정의에는 원본 태그 식별자, 설명, 원본 단위와 정의서 행 번호를 함께 보관한다. `degC`는 `°C`로 표기하며 숫자 환산은 하지 않는다. 숫자·음수·결측과 파싱 상태는 관측 데이터 그대로 유지한다. 단위가 확인되어도 비어 있는 목표 온도 값을 만들어 넣지 않는다. 정의가 없는 센서는 `unit: null`로 유지한다.
+
+- 정의서 SHA-256: `7b5b753c4ea18c1cc9fd5487b29d91a0696d6d742c9995ccc5feb87adbfa36ce`
+- 운전 CSV SHA-256: `fb995b76ab26e11f2c66226c9b2aa54388e0c04e41d6ce3a8106cef804cd2419`
+- [발전 용어 자료](https://www.data.go.kr/data/15121556/fileData.do)는 용어집이다. 이 자료로 센서별 단위를 정하지 않았다.
+- 별도 보일러 제원 CSV는 9행이다. 운전 CSV와 발전소·호기를 연결하는 키가 확인되지 않아 자동으로 연결하지 않았다.
+- 화면의 설비 위치와 연결은 이해를 위한 논리 계통도다. 실제 설치 좌표·운전 상태·안전 임계값은 확정하지 않았다. Simulator는 연습용 상태만 변경한다.
+
+이전 Phase 결과의 `단위 미확인`은 당시의 검증 상태다. 새 단위 정의를 적용하기 전의 시험 수치와 기록을 현재 실행 결과로 바꾸지 않는다.
+
+정의서를 다시 대조하고 조회용 JSON을 만드는 명령은 다음과 같다. 원본 파일은 `data/raw/`에 두며 버전 관리에서 제외한다. 생성한 `sensor_definitions.json`만 버전 관리한다. 센서명 집합이 다르거나 중복·단위 누락이 있으면 가져오기를 중단한다.
+
+```powershell
+.venv/Scripts/python.exe scripts/import-sensor-definitions.py
+```
+
+기본 입력은 `data/raw/CustomExcelView.xlsx`와 이름에 `운전데이터`가 포함된 CSV 한 개다. 다른 위치라면 `--definitions`와 `--dataset`으로 지정한다. 별도 참고 CSV가 함께 있어도 시작 도구와 E2E는 `scripts/dataset_path.py`에서 `일자`·`실제 출력값`·`총 주증기 유량` 헤더로 운전 CSV를 구분한다. 후보가 한 개로 확정되지 않으면 경로 지정을 안내하며 멈춘다.
+
+## 변경 책임
+
+| 위치 | 역할 |
+| --- | --- |
+| `backend/app/domain/registry.py` · `sensor_definitions.json` | 설비 설명·대표 Tag·확인한 단위와 출처 |
+| `frontend/src/BoilerScene.tsx` | 설비 선택·카메라 이동·확대와 센서 표시 좌표 |
+| `frontend/src/WorkspacePanel.tsx` · `SensorInspector.tsx` | 도우미 탭·센서 상세와 선택 연결 |
+| `frontend/src/RecordsPanel.tsx` | 페이지 안 Trace·Audit 조회 |
+| `docs/fonts/` | 앱과 문서가 함께 사용하는 글꼴과 라이선스 |
+| `README.md` · `docs/index.html` | 실행 방법·화면 조작·상세 문서 보기 |
+| `scripts/import-sensor-definitions.py` · `scripts/dataset_path.py` | 단위 정의 대조와 참고 CSV·운전 CSV 구분 |
+
+## 실제 확인한 결과
+
+| 검증 | 결과 |
+| --- | --- |
+| 원본 정의와 화면 단위 | 정의서 해시·118개 센서 일치, 6개 KPI 단위 표시 |
+| 설비 버튼과 센서 표시 | 7개 설비의 대표 센서·현재값·한글 설명 일치 |
+| 계통도 조작 | 양방향 이동·휠 확대, 키 해제 후 일반 스크롤, 포커스 소실·포인터 취소, 초기화·선택 복구 |
+| 설비 도형 클릭 | 7개 도형이 같은 대표 센서 선택, 선택만으로 모델 호출·쓰기 요청 없음 |
+| AI 질문과 근거 | 탭 간 질문 보존·공백 입력, 실제 Ollama 답변의 °C와 페이지 안 Trace |
+| 승인과 변경 기록 | 실제 모델 근거로 제안, 명시적 승인 후 한 번 실행, 같은 패널에서 Audit 조회 |
+| 기록의 빈 상태·실패 | 빈 Audit 안내, Trace·Audit 네트워크 실패를 주입한 뒤 오류 표시·실제 API 재시도 복구 |
+| 센서 변경과 키보드 | 지연시킨 이전 응답 취소·근거 초기화, 근거 준비 바로가기·탭 방향키·Escape |
+| 화면 크기와 고정 메뉴 | 1800·1280·900·768·375·320px에서 메뉴·도우미 조작과 가로 넘침, 이동 대상 가림 검사 |
+| 모바일과 WebGL 대체 | Space·Enter 선택, Escape 포커스 복귀, WebGL 연결 소실 후 목록 선택 유지 |
+| 검증 기록의 자격 정보 | JSON·관측 데이터·로그에 승인 자격 원문 없음 |
+
+프론트엔드 빌드도 통과했다. 로컬 Pretendard 로딩, Chromium 접근성 트리·대비·키보드 조작을 함께 확인했다. 첫 실행의 Ollama 연결 실패는 모델 서버 실행 후 해소했다. 캡처에서 발견한 화로 이름표의 윗부분 잘림은 카메라 여백을 수정하고 화면 경계 검사를 추가한 뒤 위 전체 항목을 다시 통과했다.
+
+NVDA·VoiceOver의 실제 음성 낭독은 실행하지 않았다. 이번 결과는 로컬 Simulator와 Chromium에서 확인한 범위다.
+
+## 재현과 기록
+
+```powershell
+npm --prefix frontend run build
+$env:E2E_WORKSPACE = '1'
+$env:E2E_API_PORT = '8001'
+$env:E2E_FRONTEND_PORT = '4178'
+node scripts/e2e.mjs
+```
+
+실제 CSV·Kafka·API·Ollama·Chromium을 사용하며 기존 사용자 실행과 분리된 포트·임시 계정으로 확인한다. 위 API·화면 포트와 Kafka `19092`가 비어 있어야 한다. 설치된 실행 도구·Chromium·AI 모델과 실행 중인 Ollama를 사용한다. 검증 항목과 완료 기준은 [작업 화면 지침](../instructions/phase7-workspace.md)에 있다. 기록은 `artifacts/e2e/phase7/workspace/`에 저장하며 접근 키·쿠키는 남기지 않는다.
+
+| 기록 | 내용 |
+| --- | --- |
+| `run.json` | 입력 해시·11개 검증 결과·시작/종료 시각·`passed: true` |
+| `agent-answer.json` | 실제 모델 답변과 Trace |
+| `simulator-audit.json` | 제안·승인·실행 기록 |
+| `workspace-desktop.jpg` · `workspace-mobile.jpg` | 데스크톱·모바일 실제 화면 |
+| `ai-drawer.jpg` · `simulator-drawer.jpg` · `audit-drawer.jpg` | AI·승인·변경 기록 도우미 |
+
+검증 캡처 5개를 `docs/images/`에도 반영했다. 데스크톱 계통도 캡처는 문서에서 `workspace.jpg`로 사용한다.
+
+문서 생성 명령은 `uv run --frozen python scripts/build-guide.py`다. 새 지침·결과와 관련 소스는 프로젝트 지도에 포함되어 페이지 안에서 읽을 수 있다. 문서 생성·Python 구문·내장 JavaScript 구문과 문서 링크를 검사했다. 문서 브라우저 검수 명령은 `node scripts/review-ui.mjs`다.
