@@ -13,6 +13,7 @@ class Evidence(TypedDict):
     value: Any
     source_time: str | None
     quality: str | None
+    unit: str | None
 
 
 def collect_evidence(call, selected_tag) -> list[Evidence]:
@@ -25,7 +26,8 @@ def collect_evidence(call, selected_tag) -> list[Evidence]:
             value = value[key]
         entries.append({'id': '', 'tool_id': call['id'], 'tool': name, 'path': path,
                         'tag': tag, 'field': field, 'value': value,
-                        'source_time': result.get('source_time'), 'quality': quality})
+                        'source_time': result.get('source_time'), 'quality': quality,
+                        'unit': result.get('units', {}).get(tag, result.get('unit'))})
 
     if name == 'get_equipment_status':
         reading = result['sensors'][selected_tag]
@@ -43,11 +45,15 @@ def collect_evidence(call, selected_tag) -> list[Evidence]:
     elif name == 'get_temperature_forecast':
         for field in ('prediction', 'horizon_minutes', 'forecast_time', 'selected_model', 'test'):
             add([field], field, result['target'])
+            if field not in ('prediction', 'test'):
+                entries[-1]['unit'] = '분' if field == 'horizon_minutes' else None
     return entries
 
 
 def compose_answer(intents: list[Intent], evidence: list[Evidence], tag: str, status: str):
     conclusions, reasons, limits, gaps = [], [], [], []
+    unit = next((item.get('unit') for item in evidence if item['tag'] == tag and item.get('unit')), None)
+    suffix = f' {unit}' if unit else ''
 
     def find(tool, field):
         return next((item for item in evidence if item['tool'] == tool and item['field'] == field), None)
@@ -79,7 +85,7 @@ def compose_answer(intents: list[Intent], evidence: list[Evidence], tag: str, st
                 problem = '파싱 오류(숫자 해석 실패)' if current['quality'] == 'parse_error' else '결측'
                 conclusions.append(f'{tag}은 {problem}으로 값을 확인할 수 없습니다.')
             else:
-                conclusions.append(f"{tag}의 {label}은 {number(current['value'])}입니다.")
+                conclusions.append(f"{tag}의 {label}은 {number(current['value'])}{suffix}입니다.")
             reasons.append(f"원본 시각 {current['source_time']}. {cite(current)}")
         elif intent == 'trend':
             history = find('get_sensor_history', 'history')
@@ -97,13 +103,13 @@ def compose_answer(intents: list[Intent], evidence: list[Evidence], tag: str, st
             delta = last['value'] - first['value']
             direction = '상승했습니다' if delta > 0 else '하락했습니다' if delta < 0 else '같습니다'
             conclusions.append(f'최근 {len(points)}개 관측의 처음과 끝을 비교하면 값이 {direction}.')
-            reasons.append(f"{tag}: {first['source_time']}의 {number(first['value'])} → "
-                           f"{last['source_time']}의 {number(last['value'])}. {cite(history)}")
+            reasons.append(f"{tag}: {first['source_time']}의 {number(first['value'])}{suffix} → "
+                           f"{last['source_time']}의 {number(last['value'])}{suffix}. {cite(history)}")
             if rate['value'] is None:
                 reasons.append(f'직전 값이 없거나 결측이어서 직전 관측 대비 변화율은 계산할 수 없습니다. {cite(rate)}')
             else:
                 recent = '상승' if rate['value'] > 0 else '하락' if rate['value'] < 0 else '변화 없음'
-                reasons.append(f"마지막 두 관측은 {recent}이며, 원본 시각 기준 분당 변화량은 {number(rate['value'])}입니다. {cite(rate)}")
+                reasons.append(f"마지막 두 관측은 {recent}이며, 원본 시각 기준 분당 변화량은 {number(rate['value'])}{suffix}/분입니다. {cite(rate)}")
             if any(point['value'] is None for point in points):
                 limits.append('중간 결측 구간은 보간하지 않아 연속적인 변화 방향을 판단할 수 없습니다.')
             else:
@@ -126,8 +132,8 @@ def compose_answer(intents: list[Intent], evidence: list[Evidence], tag: str, st
                 conclusions.append('선택 센서의 관측값이 결측이어서 목표값과의 차이를 계산할 수 없습니다.')
             else:
                 difference = comparison['actual_value'] - comparison['target_value']
-                conclusions.append(f'현재값에서 목표값을 뺀 차이는 {number(difference)}입니다.')
-                reasons.append(f"관측값 {number(comparison['actual_value'])}, 목표값 {number(comparison['target_value'])}.")
+                conclusions.append(f'현재값에서 목표값을 뺀 차이는 {number(difference)}{suffix}입니다.')
+                reasons.append(f"관측값 {number(comparison['actual_value'])}{suffix}, 목표값 {number(comparison['target_value'])}{suffix}.")
             reasons.append(f"원본 시각 {target['source_time']}의 목표 대응·관측 결과. {cite(target)}")
             limits.append('결측 목표값을 0이나 임의의 기준으로 대체하지 않습니다.')
         elif intent == 'forecast':
@@ -139,7 +145,7 @@ def compose_answer(intents: list[Intent], evidence: list[Evidence], tag: str, st
             mae, naive = test[chosen]['mae'], test['naive']['mae']
             comparison = 'Naive보다 오차가 커 신뢰에 한계가 있습니다' if mae > naive else (
                 'Naive와 오차가 같아 성능 개선이 확인되지 않았습니다' if mae == naive else 'Naive보다 평균 오차가 작았습니다')
-            conclusions.append(f"{horizon['value']}분 뒤 예측값은 {number(prediction['value'])}입니다. 시험 구간에서는 {comparison}.")
+            conclusions.append(f"{horizon['value']}분 뒤 예측값은 {number(prediction['value'])} {prediction.get('unit') or '단위 정의 없음'}입니다. 시험 구간에서는 {comparison}.")
             reasons.append(f"예측 대상은 {prediction['tag']}, 원본 시각 {prediction['source_time']}, "
                            f"예측 시각 {forecast_time['value']}. {cite(prediction, horizon, forecast_time)}")
             model_label = '선형 모델' if chosen == 'linear_ar' else 'Naive'
@@ -154,13 +160,15 @@ def compose_answer(intents: list[Intent], evidence: list[Evidence], tag: str, st
                 readings = [item for item in evidence if item['tool'] == 'get_current_controls' and '밸브' in item['tag']]
                 for reading in readings[:1]:
                     value = '결측' if reading['value'] is None else number(reading['value'])
+                    if reading['value'] is not None and reading.get('unit'):
+                        value += f" {reading['unit']}"
                     reasons.append(f"{reading['tag']}의 관측값은 {value}이며 조작 권고량이 아닙니다. "
                                    f"원본 시각 {reading['source_time']}. {cite(reading)}")
             limits.append('제어 효과·허용 범위를 확인할 수 없어 개도나 변경량을 권고하지 않으며 실제 설비를 조작하지 않습니다.')
         else:
             conclusions.append('이 질문에 대한 판단을 내릴 근거가 부족합니다.')
             limits.append('선택 센서의 현재값·추이·목표 차이·예측·제어 가능 여부를 질문해 주세요.')
-    limits.append('원본 수치의 단위는 미확인입니다.')
+    limits.append(f'단위 {unit}는 컬럼 정의서 기준이며 숫자는 환산하지 않았습니다.' if unit else '이 답변의 단위를 확인할 근거가 부족합니다.')
     if status != 'LIVE':
         detail = {'STALE': '새 데이터 수신 지연', 'ERROR': '수신 오류', 'DISCONNECTED': '연결 끊김'}.get(status, '수신 상태 미확인')
         limits.insert(0, f'{status}({detail}) 상태의 마지막 관측입니다. 최신 수신값으로 단정할 수 없습니다.')

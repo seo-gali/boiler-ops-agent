@@ -22,7 +22,7 @@ def sensor_summary(state, tag):
         minutes = (datetime.fromisoformat(events[-1]["source_time"]) - datetime.fromisoformat(events[-2]["source_time"])).total_seconds() / 60
         if previous is not None and minutes > 0:
             rate = (value - previous) / minutes
-    return {"tag": tag, "current": value, "source_time": state.current["source_time"] if state.current else None,
+    return {"tag": tag, "unit": state.registry[tag]['unit'], "current": value, "source_time": state.current["source_time"] if state.current else None,
             "rate_per_source_minute": rate, "baseline_count": len(baseline), "baseline_mean": average,
             "baseline_stddev": deviation, "z_score": (value - average) / deviation if value is not None and deviation else None,
             "interpretation": "Observed historical distribution, not an industrial safety threshold"}
@@ -39,6 +39,6 @@ def loop_analysis(state, name, limit=120):
         actual, target = values[loop["actual"]], values[loop["target"]]
         points.append({"sequence": event["sequence"], "source_time": event["source_time"], "values": values,
                        "actual_minus_target": actual - target if actual is not None and target is not None else None})
-    return {"loop": name, **loop, "points": points, "summary": sensor_summary(state, loop["actual"]),
+    return {"loop": name, **loop, "units": {tag: state.registry[tag]['unit'] for tag in tags}, "points": points, "summary": sensor_summary(state, loop["actual"]),
             "target_available": bool(points) and points[-1]["values"][loop["target"]] is not None,
             "status": state.snapshot()["status"], "note": "관측 입력값 비교. 제어 인과관계 및 산업 안전 판정 미확인."}

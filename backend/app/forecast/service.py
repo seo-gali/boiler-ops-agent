@@ -23,7 +23,7 @@ def forecast(state):
     predictions = {"naive": value, "linear_ar": model["intercept"] + model["slope"] * value}
     if not all(math.isfinite(value) for value in predictions.values()):
         raise ValueError("Forecast produced a non-finite value")
-    return {"target": target, "equipment": "reheater", "source_time": state.current["source_time"],
+    return {"target": target, "unit": state.registry[target]['unit'], "equipment": "reheater", "source_time": state.current["source_time"],
             "forecast_time": (source + timedelta(minutes=model["horizon_minutes"])).isoformat(),
             "horizon_minutes": model["horizon_minutes"], "input_value": value,
             "prediction": predictions[model["selected"]], "selected_model": model["selected"],
@@ -32,4 +32,4 @@ def forecast(state):
             "dataset_sha256": model["dataset_sha256"], "status": state.snapshot()["status"],
             "beats_naive_on_test": model["test"][model["selected"]]["mae"] < model["test"]["naive"]["mae"],
             "advisory": "예측은 관측 추세의 참고 정보입니다. 목표 온도와 제어 효과 근거를 확인하기 전 제어값 변경을 권고하지 않습니다.",
-            "limitations": model["limitations"]}
+            "limitations": [item for item in model["limitations"] if item != "단위 미확인" or not state.registry[target]['unit']]}

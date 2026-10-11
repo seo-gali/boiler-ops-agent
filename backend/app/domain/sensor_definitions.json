@@ -1,0 +1,833 @@
+{
+  "source_file": "CustomExcelView.xlsx",
+  "source_sha256": "7b5b753c4ea18c1cc9fd5487b29d91a0696d6d742c9995ccc5feb87adbfa36ce",
+  "dataset_sha256": "fb995b76ab26e11f2c66226c9b2aa54388e0c04e41d6ce3a8106cef804cd2419",
+  "sensors": {
+    "실제 출력값": {
+      "source_tag": "7DH MW XQ01/PLOT",
+      "description": "실제 출력값 입니다. 단위는 MW입니다.",
+      "unit": "MW",
+      "source_unit": "MW",
+      "source_row": 4
+    },
+    "총 주증기 유량": {
+      "source_tag": "7PC NC05 XQ04/PLOT",
+      "description": "총 주증기 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 5
+    },
+    "석탄 유량 제어": {
+      "source_tag": "7CS NCIC21 ZQ03/PLOT",
+      "description": "석탄 유량 제어값 입니다. 단위는%입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 6
+    },
+    "급탄기 A 요구값": {
+      "source_tag": "7CS XAFDR AO YQ01/PLOT",
+      "description": "급탄기 A 요구값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 7
+    },
+    "급탄기 A 속도 평균값 ": {
+      "source_tag": "7CS XAST01 M XQ04/PLOT",
+      "description": "급탄기 A 속도 평균값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 8
+    },
+    "급탄기 B 요구값": {
+      "source_tag": "7CS XBFDR AO YQ01/PLOT",
+      "description": "급탄기 B 요구값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 9
+    },
+    "급탄기 B 속도 평균값 ": {
+      "source_tag": "7CS XBST01 M XQ04/PLOT",
+      "description": "급탄기 B 속도 평균값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 10
+    },
+    "급탄기 C 요구값": {
+      "source_tag": "7CS XCFDR AO YQ01/PLOT",
+      "description": "급탄기 C 요구값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 11
+    },
+    "급탄기 C 속도 평균값 ": {
+      "source_tag": "7CS XCST01 M XQ04/PLOT",
+      "description": "급탄기 C 속도 평균값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 12
+    },
+    "급탄기 D 요구값": {
+      "source_tag": "7CS XDFDR AO YQ01/PLOT",
+      "description": "급탄기 D 요구값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 13
+    },
+    "급탄기 D 속도 평균값 ": {
+      "source_tag": "7CS XDST01 M XQ04/PLOT",
+      "description": "급탄기 D 속도 평균값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 14
+    },
+    "급탄기 E 요구값": {
+      "source_tag": "7CS XEFDR AO YQ01/PLOT",
+      "description": "급탄기 E 요구값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 15
+    },
+    "급탄기 E 속도 평균값 ": {
+      "source_tag": "7CS XEST01 M XQ04/PLOT",
+      "description": "급탄기 E 속도 평균값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 16
+    },
+    "급탄기 F 요구값": {
+      "source_tag": "7CS XFFDR AO YQ01/PLOT",
+      "description": "급탄기 F 요구값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 17
+    },
+    "급탄기 F 속도 평균값 ": {
+      "source_tag": "7CS XFST01 M XQ04/PLOT",
+      "description": "급탄기 F 속도 평균값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 18
+    },
+    "산소 제어": {
+      "source_tag": "7FG NCIC21C TR01/PLOT",
+      "description": "산소 제어값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 19
+    },
+    "산소농도 기반 보정 제어": {
+      "source_tag": "7FG NCIC21C ZQ02/PLOT",
+      "description": "산소농도 기반 보정 제어값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 20
+    },
+    "배기가스 산소 중간값": {
+      "source_tag": "7FG AT01A M XQ04/PLOT",
+      "description": "배기가스 산소 중간값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 21
+    },
+    "총 공기 유량": {
+      "source_tag": "7SA NCIC21 XQ03/PLOT",
+      "description": "총 공기 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 22
+    },
+    "2차공기 주제어": {
+      "source_tag": "7SA NCIC22 ZQ02/PLOT",
+      "description": "2차공기 주제어값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 23
+    },
+    "절탄기 헤더 출구 링크 온도 01": {
+      "source_tag": "7BW TT01C XQ01/PLOT",
+      "description": "절탄기 헤더 출구 링크 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 24
+    },
+    "절탄기 헤더 출구 링크 온도 02": {
+      "source_tag": "7BW TT02C XQ01/PLOT",
+      "description": "절탄기 헤더 출구 링크 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 25
+    },
+    "노내 상부 좌측부 튜브 헤더 출구 온도 평균값": {
+      "source_tag": "7BE TT05I M XQ03/PLOT",
+      "description": "노내 상부 좌측부 튜브 헤더 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 26
+    },
+    "기수분리기 A 출구온도 01": {
+      "source_tag": "7SH TT01A XQ01/PLOT",
+      "description": "기수분리기 A 출구온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 27
+    },
+    "과열기 디비젼 입구 헤더(좌측) 배관 온도 01": {
+      "source_tag": "7SH TT01C XQ01/PLOT",
+      "description": "과열기 디비젼 입구 헤더(좌측) 배관 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 28
+    },
+    "노내 상부 우측부 튜브 헤더 출구 온도 평균값": {
+      "source_tag": "7BE TT03I M XQ03/PLOT",
+      "description": "노내 상부 우측부 튜브 헤더 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 29
+    },
+    "기수분리기 A 출구온도 02": {
+      "source_tag": "7SH TT02A XQ01/PLOT",
+      "description": "기수분리기 A 출구온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 30
+    },
+    "과열기 디비젼 입구 헤더(좌측) 배관 온도 02": {
+      "source_tag": "7SH TT02C XQ01/PLOT",
+      "description": "과열기 디비젼 입구 헤더(좌측) 배관 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 31
+    },
+    "노내 상부 전면부 튜브 헤더 출구 온도 평균값": {
+      "source_tag": "7BE TT01I M XQ03/PLOT",
+      "description": "노내 상부 전면부 튜브 헤더 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 32
+    },
+    "기수분리기 B 출구온도 01": {
+      "source_tag": "7SH TT03A XQ01/PLOT",
+      "description": "기수분리기 B 출구온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 33
+    },
+    "과열기 디비젼 입구 헤더(우측) 배관 온도 01": {
+      "source_tag": "7SH TT03C XQ01/PLOT",
+      "description": "과열기 디비젼 입구 헤더(우측) 배관 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 34
+    },
+    "노내 상부 루프 튜브 헤더 출구 온도 평균값": {
+      "source_tag": "7BE TT07I M XQ03/PLOT",
+      "description": "노내 상부 루프 튜브 헤더 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 35
+    },
+    "기수분리기 B 출구온도 02": {
+      "source_tag": "7SH TT04A XQ01/PLOT",
+      "description": "기수분리기 B 출구온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 36
+    },
+    "과열기 디비젼 입구 헤더(우측) 배관 온도 02": {
+      "source_tag": "7SH TT04C XQ01/PLOT",
+      "description": "과열기 디비젼 입구 헤더(우측) 배관 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 37
+    },
+    "보일러 노 루프 튜브 금속 온도": {
+      "source_tag": "7SH TT01B XQ01/PLOT",
+      "description": "보일러 노 루프 튜브 금속 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 38
+    },
+    "일차과열기A 과열저감기1 입구 온도 평균값": {
+      "source_tag": "7SH TT01E M XQ03/PLOT",
+      "description": "일차과열기A 과열저감기1 입구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 39
+    },
+    "일차과열기A 과열저감기1 출구 온도 평균값": {
+      "source_tag": "7SH TT09E M XQ03/PLOT",
+      "description": "일차과열기A 과열저감기1 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 40
+    },
+    "일차과열기B 과열저감기1 입구 온도 평균값": {
+      "source_tag": "7SH TT03E M XQ03/PLOT",
+      "description": "일차과열기B 과열저감기1 입구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 41
+    },
+    "판형과열기B 과열저감기 출구 온도 평균값": {
+      "source_tag": "7SH TT11E M XQ03/PLOT",
+      "description": "판형과열기B 과열저감기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 42
+    },
+    "판형과열기A 과열저감기 출구 온도 평균값": {
+      "source_tag": "7SH TT01G M XQ03/PLOT",
+      "description": "판형과열기A 과열저감기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 43
+    },
+    "최종과열기A 과열저감기2 온도 평균값": {
+      "source_tag": "7SH TT05G M XQ03/PLOT",
+      "description": "최종과열기A 과열저감기2 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 44
+    },
+    "판형과열기B 출구 온도 평균값": {
+      "source_tag": "7SH TT03G M XQ03/PLOT",
+      "description": "판형과열기B 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 45
+    },
+    "최종과열기B 과열저감기 출구 온도 평균값": {
+      "source_tag": "7SH TT07G M XQ03/PLOT",
+      "description": "최종과열기B 과열저감기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 46
+    },
+    "최종과열기 헤더 온도 평균값 A": {
+      "source_tag": "7MS TT01A M XQ03/PLOT",
+      "description": "최종과열기 헤더 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 47
+    },
+    "주증기 압력 중간값 A": {
+      "source_tag": "7MS PT01A M XQ03/PLOT",
+      "description": "주증기 압력 중간값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 48
+    },
+    "최종과열기 헤더 온도 평균값 B": {
+      "source_tag": "7MS TT01B M XQ03/PLOT",
+      "description": "최종과열기 헤더 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 49
+    },
+    "주증기 압력 중간값 B": {
+      "source_tag": "7MS PT01B M XQ03/PLOT",
+      "description": "주증기 압력 중간값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 50
+    },
+    "터빈용 주증기 압력": {
+      "source_tag": "7DH HYD XQ01/PLOT",
+      "description": "터빈용 주증기 압력값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 51
+    },
+    "주증기 유량": {
+      "source_tag": "7PC NC05 XQ03/PLOT",
+      "description": "주증기 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 52
+    },
+    "최종과열기 출구 온도 평균값": {
+      "source_tag": "7MS TT04A M XQ03/PLOT",
+      "description": "최종과열기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 53
+    },
+    "과열기 제어 루프 A 출력값": {
+      "source_tag": "7SH NCIC34B ZQ12/PLOT",
+      "description": "과열기 제어 A 루프 출력값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 54
+    },
+    "온도 평균값": {
+      "source_tag": "7MS TT04C M XQ03/PLOT",
+      "description": "온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 55
+    },
+    "과열기 제어 루프 B 출력값": {
+      "source_tag": "7SH NCIC34A ZQ12/PLOT",
+      "description": "과열기 제어 B 루프 출력값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 56
+    },
+    "저온 재열기 압력": {
+      "source_tag": "7CR PT52A XQ01/PLOT",
+      "description": "저온 재열기 압력값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 57
+    },
+    "재열증기 과열저감기 입구 온도 A": {
+      "source_tag": "7CR TT51A XQ01/PLOT",
+      "description": "재열증기 과열저감기 입구 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 58
+    },
+    "저온 재열증기 압력": {
+      "source_tag": "7CR PT52B XQ01/PLOT",
+      "description": "저온 재열증기 압력값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 59
+    },
+    "재열증기 과열저감기 입구 온도 B": {
+      "source_tag": "7CR TT51B XQ01/PLOT",
+      "description": "재열증기 과열저감기 입구 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 60
+    },
+    "재열증기A 과열저감기 출구 온도 평균값": {
+      "source_tag": "7CR TT52A M XQ03/PLOT",
+      "description": "재열증기A 과열저감기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 61
+    },
+    "재열증기B 과열저감기 출구 온도 평균값": {
+      "source_tag": "7CR TT52B M XQ03/PLOT",
+      "description": "재열증기B 과열저감기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 62
+    },
+    "최종재열증기 입구 온도 평균값 01": {
+      "source_tag": "7RH TT01B M XQ03/PLOT",
+      "description": "최종재열증기 입구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 63
+    },
+    "최종재열증기 입구 온도 평균값 02": {
+      "source_tag": "7RH TT03B M XQ03/PLOT",
+      "description": "최종재열증기 입구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 64
+    },
+    "최종재열기 입구 온도 평균값": {
+      "source_tag": "7RH TT01B MM XQ03/PLOT",
+      "description": "최종재열기 입구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 65
+    },
+    "고온 과열기 출구 압력 A": {
+      "source_tag": "7HR PT51A XQ01/PLOT",
+      "description": "고온 과열기 출구 압력값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 66
+    },
+    "고온 과열기 출구 온도 평균값 A": {
+      "source_tag": "7HR TT52A M XQ03/PLOT",
+      "description": "고온 과열기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 67
+    },
+    "고온 과열기 출구 압력 B": {
+      "source_tag": "7HR PT51B XQ01/PLOT",
+      "description": "고온 과열기 출구 압력값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 68
+    },
+    "고온 과열기 출구 온도 평균값 B": {
+      "source_tag": "7HR TT52B M XQ03/PLOT",
+      "description": "고온 과열기 출구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 69
+    },
+    "절탄기 입구 급수 보정 유량": {
+      "source_tag": "7FW FT52A MC XQ05/PLOT",
+      "description": "절탄기 입구 급수 보정 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 70
+    },
+    "절탄기 입구 급수 압력 중간값": {
+      "source_tag": "7FW PT54 M XQ03/PLOT",
+      "description": "절탄기 입구 급수 압력 중간값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 71
+    },
+    "절탄기 입구 급수 온도 중간값": {
+      "source_tag": "7FW TT54 M XQ03/PLOT",
+      "description": "절탄기 입구 급수 온도 중간값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 72
+    },
+    "총 급수 보정 유량": {
+      "source_tag": "7FW FT51A MC XQ05/PLOT",
+      "description": "총 급수 보정 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 73
+    },
+    "급수 압력 중간값": {
+      "source_tag": "7FW PT51 M XQ03/PLOT",
+      "description": "급수 압력 중간값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 74
+    },
+    "급수 온도 중간값": {
+      "source_tag": "7FW TT51 M XQ03/PLOT",
+      "description": "급수 온도 중간값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 75
+    },
+    "과열기 스프레이 총 유량": {
+      "source_tag": "7SH FT01 XV01/PLOT",
+      "description": "과열기 스프레이 총 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 76
+    },
+    "과열기 과열저감기1 스프레이 유량": {
+      "source_tag": "7SH FT01 XQ01/PLOT",
+      "description": "과열기 과열저감기1 스프레이 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 77
+    },
+    "과열기 과열저감기1 스프레이 밸브A 개도": {
+      "source_tag": "7SH TCV01 Z XQ01/PLOT",
+      "description": "과열기 과열저감기1 스프레이 밸브A 개도값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 78
+    },
+    "과열기 과열저감기1 스프레이 밸브B 개도": {
+      "source_tag": "7SH TCV02 Z XQ01/PLOT",
+      "description": "과열기 과열저감기1 스프레이 밸브B 개도값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 79
+    },
+    "과열기 과열저감기2 스프레이 유량": {
+      "source_tag": "7SH FT02 XQ01/PLOT",
+      "description": "과열기 과열저감기2 스프레이 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 80
+    },
+    "과열기 과열저감기2 스프레이 밸브A 개도": {
+      "source_tag": "7SH TCV03 Z XQ01/PLOT",
+      "description": "과열기 과열저감기2 스프레이 밸브A 개도값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 81
+    },
+    "과열기 과열저감기2 스프레이 밸브B 개도": {
+      "source_tag": "7SH TCV04 Z XQ01/PLOT",
+      "description": "과열기 과열저감기2 스프레이 밸브B 개도값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 82
+    },
+    "재열기 과열저감기 스프레이 압력": {
+      "source_tag": "7RH PT01 XQ01/PLOT",
+      "description": "재열기 과열저감기 스프레이 압력값 입니다. 단위는 kg/cm2g입니다.",
+      "unit": "kg/cm2g",
+      "source_unit": "kg/cm2g",
+      "source_row": 83
+    },
+    "재열기 스프레이 유량": {
+      "source_tag": "7RH FT01 XQ01/PLOT",
+      "description": "재열기 스프레이 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 84
+    },
+    "재열기 과열저감기 스프레이 온도": {
+      "source_tag": "7RH TT01 XQ01/PLOT",
+      "description": "재열기 과열저감기 스프레이 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 85
+    },
+    "재열기 과열저감기1 스프레이 밸브 개도": {
+      "source_tag": "7RH TCV51A Z XQ01/PLOT",
+      "description": "재열기 과열저감기1 스프레이 밸브 개도값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 86
+    },
+    "재열기 과열저감기2 스프레이 밸브 개도": {
+      "source_tag": "7RH TCV51B Z XQ01/PLOT",
+      "description": "재열기 과열저감기2 스프레이 밸브 개도값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 87
+    },
+    "가스공기예열기A 출구측 고온 2차공기 온도 평균값": {
+      "source_tag": "7SA TT07A M XQ03/PLOT",
+      "description": "가스공기예열기A 출구측 고온 2차공기 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 88
+    },
+    "가스공기예열기B 출구측 고온 2차공기 온도 평균값": {
+      "source_tag": "7SA TT07B M XQ03/PLOT",
+      "description": "가스공기예열기B 출구측 고온 2차공기 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 89
+    },
+    "압입송풍기A 보정 공기유량": {
+      "source_tag": "7SA FT01A MC XQ05/PLOT",
+      "description": "압입송풍기A 보정 공기유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 90
+    },
+    "압입송풍기B 보정 공기유량": {
+      "source_tag": "7SA FT01B MC XQ05/PLOT",
+      "description": "압입송풍기B 보정 공기유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 91
+    },
+    "배기가스 산소 중간값 A": {
+      "source_tag": "7FG AT01A M XQ03/PLOT",
+      "description": "배기가스 산소 중간값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 92
+    },
+    "덕트용 불투명도 분석기 A": {
+      "source_tag": "7FG AT04A XQ31/PLOT",
+      "description": "덕트용 불투명도 분석기값 입니다. 단위는 mg/m3입니다.",
+      "unit": "mg/m3",
+      "source_unit": "mg/m3",
+      "source_row": 93
+    },
+    "선택적 촉매 환원장치A 배기가스 입구 온도 평균값": {
+      "source_tag": "7FG TT01A M XQ03/PLOT",
+      "description": "선택적 촉매 환원장치A 배기가스 입구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 94
+    },
+    "배기가스 산소 중간값 B": {
+      "source_tag": "7FG AT01B M XQ03/PLOT",
+      "description": "배기가스 산소 중간값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 95
+    },
+    "덕트용 불투명도 분석기 B": {
+      "source_tag": "7FG AT04B XQ31/PLOT",
+      "description": "덕트용 불투명도 분석기값 입니다. 단위는 mg/m3입니다.",
+      "unit": "mg/m3",
+      "source_unit": "mg/m3",
+      "source_row": 96
+    },
+    "선택적 촉매 환원장치B 배기가스 입구 온도 평균값": {
+      "source_tag": "7FG TT01B M XQ03/PLOT",
+      "description": "선택적 촉매 환원장치B 배기가스 입구 온도 평균값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 97
+    },
+    "1코너 하부 보조 2차 연소공기 유량": {
+      "source_tag": "7SA FT04A XQ01",
+      "description": "1코너 하부 보조 2차 연소공기 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 98
+    },
+    "하부 분리형 2차 연소공기 통풍박스 B 유량": {
+      "source_tag": "7SA FT04B XQ01/PLOT",
+      "description": "하부 분리형 2차 연소공기 통풍박스 B 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 99
+    },
+    "하부 분리형 2차 연소공기 통풍박스 B 유량 01C": {
+      "source_tag": "7SA FT04C XQ01/PLOT",
+      "description": "하부 분리형 2차 연소공기 통풍박스 B 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 100
+    },
+    "하부 분리형 2차 연소공기 통풍박스 B 유량 01D": {
+      "source_tag": "7SA FT04D XQ01/PLOT",
+      "description": "하부 분리형 2차 연소공기 통풍박스 B 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 101
+    },
+    "1코너 상부 보조 2차 연소공기 유량": {
+      "source_tag": "7SA FT05A XQ01/PLOT",
+      "description": "1코너 상부 보조 2차 연소공기 유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 102
+    },
+    "상부 분리형 2차 연소공기 통풍박스 B유량": {
+      "source_tag": "7SA FT05B XQ01/PLOT",
+      "description": "상부 분리형 2차 연소공기 통풍박스 B유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 103
+    },
+    "하부 분리형 2차 연소공기 통풍박스 B유량 02C": {
+      "source_tag": "7SA FT05C XQ01/PLOT",
+      "description": "하부 분리형 2차 연소공기 통풍박스 B유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 104
+    },
+    "하부 분리형 2차 연소공기 통풍박스 B유량 02D": {
+      "source_tag": "7SA FT05D XQ01/PLOT",
+      "description": "하부 분리형 2차 연소공기 통풍박스 B유량값 입니다. 단위는 T/H입니다.",
+      "unit": "T/H",
+      "source_unit": "T/H",
+      "source_row": 105
+    },
+    "재열증기 온도(틸트) 제어": {
+      "source_tag": "7BF NCIC21 ZQ02/PLOT",
+      "description": "재열증기 온도(틸트) 제어값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 106
+    },
+    "주버너 C1 기울기 위치": {
+      "source_tag": "7BF ZT01A XQ01/PLOT",
+      "description": "주버너 C1 기울기 위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 107
+    },
+    "주버너 C2 기울기 위치": {
+      "source_tag": "7BF ZT01B XQ01/PLOT",
+      "description": "주버너 C2 기울기 위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 108
+    },
+    "주버너 C3 기울기 위치": {
+      "source_tag": "7BF ZT01C XQ01/PLOT",
+      "description": "주버너 C3 기울기 위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 109
+    },
+    "주버너 C4 기울기 위치": {
+      "source_tag": "7BF ZT01D XQ01/PLOT",
+      "description": "주버너 C4 기울기 위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 110
+    },
+    "C1 조정용 과잉공기 상부 버너 기울기위치": {
+      "source_tag": "7BF ZT03A XQ01/PLOT",
+      "description": "C1 조정용 과잉공기 상부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 111
+    },
+    "C2 조정용 과잉공기 상부 버너 기울기위치": {
+      "source_tag": "7BF ZT03B XQ01/PLOT",
+      "description": "C2 조정용 과잉공기 상부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 112
+    },
+    "C3 조정용 과잉공기 상부 버너 기울기위치": {
+      "source_tag": "7BF ZT03C XQ01/PLOT",
+      "description": "C3 조정용 과잉공기 상부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 113
+    },
+    "C4 조정용 과잉공기 상부 버너 기울기위치": {
+      "source_tag": "7BF ZT03D XQ01/PLOT",
+      "description": "C4 조정용 과잉공기 상부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 114
+    },
+    "C1 조정용 과잉공기 하부 버너 기울기위치": {
+      "source_tag": "7BF ZT02A XQ01/PLOT",
+      "description": "C1 조정용 과잉공기 하부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 115
+    },
+    "C2 조정용 과잉공기 하부 버너 기울기위치": {
+      "source_tag": "7BF ZT02B XQ01/PLOT",
+      "description": "C2 조정용 과잉공기 하부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 116
+    },
+    "C3 조정용 과잉공기 하부 버너 기울기위치": {
+      "source_tag": "7BF ZT02C XQ01/PLOT",
+      "description": "C3 조정용 과잉공기 하부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 117
+    },
+    "C4 조정용 과잉공기 하부 버너 기울기위치": {
+      "source_tag": "7BF ZT02D XQ01/PLOT",
+      "description": "C4 조정용 과잉공기 하부 버너 기울기위치값 입니다. 단위는 %입니다.",
+      "unit": "%",
+      "source_unit": "%",
+      "source_row": 118
+    },
+    "굴뚝용 질소산화물 분석기": {
+      "source_tag": "7FG AT31B XQ21/PLOT",
+      "description": "굴뚝용 질소산화물 분석기값 입니다. 단위는 ppm입니다.",
+      "unit": "ppm",
+      "source_unit": "ppm",
+      "source_row": 119
+    },
+    "목표 발전량": {
+      "source_tag": "7PC ADS XQ01/PLOT",
+      "description": "목표 발전량값 입니다. 단위는 MW입니다.",
+      "unit": "MW",
+      "source_unit": "MW",
+      "source_row": 120
+    },
+    "목표 재열기 온도": {
+      "source_tag": "7RH NCIC31A ZQ01/PLOT",
+      "description": "목표 재열기 온도값 입니다. 단위는 degC입니다.",
+      "unit": "°C",
+      "source_unit": "degC",
+      "source_row": 121
+    }
+  }
+}

@@ -62,7 +62,7 @@ def train():
               "test_start_time": observations[valid_end][0].isoformat(), "test_start_row": valid_end + 1,
               "test_end_time": observations[-1][0].isoformat(), "validation": validation_metrics,
               "test": {name: metrics(testing, predict) for name, predict in predictors.items()},
-              "limitations": ["단위 미확인", "단일 설비·기간의 시간순 holdout", "제어 인과관계 미확인", "목표 온도 결측"]}
+              "limitations": ["단일 CSV·기간의 시간순 holdout", "제어 인과관계 미확인", "목표 온도 결측"]}
     path = Path(os.getenv("FORECAST_MODEL_PATH", "artifacts/models/reheater.json"))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")

@@ -16,6 +16,7 @@ from urllib.request import urlopen
 import webbrowser
 
 from dotenv import dotenv_values
+from dataset_path import discover_dataset
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = "http://127.0.0.1:5173"
@@ -154,11 +155,12 @@ class Runner:
 def prepare_config(runner, config_dir, reset_key=False):
     config_file = config_dir / ".env"
     if not config_file.exists():
-        candidates = list((ROOT / "data/raw").glob("*.csv"))
-        if len(candidates) != 1:
-            raise StartError("data/raw 폴더에 원본 CSV 한 개를 넣어 주세요. 여러 개라면 .env에 사용할 경로를 지정하세요.")
+        try:
+            dataset = discover_dataset(ROOT / 'data/raw')
+        except ValueError as error:
+            raise StartError(str(error)) from None
         contents = (ROOT / ".env.example").read_text(encoding="utf-8")
-        lines = [f'BOILER_DATASET_PATH="{candidates[0].as_posix()}"' if line.startswith("BOILER_DATASET_PATH=") else line
+        lines = [f'BOILER_DATASET_PATH="{dataset.as_posix()}"' if line.startswith("BOILER_DATASET_PATH=") else line
                  for line in contents.splitlines()]
         with config_file.open("x", encoding="utf-8") as target:
             target.write("\n".join(lines) + "\n")

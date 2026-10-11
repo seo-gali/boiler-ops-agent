@@ -31,12 +31,14 @@ class ReadTools:
                 raise ValueError("Forecast only supports the selected reheater equipment")
             return forecast(self.state)
         if name == "get_sensor_history":
-            return {"equipment": self.equipment, "tag": self.tag, "source_time": self.state.current['source_time'], "points": [
+            return {"equipment": self.equipment, "tag": self.tag, "unit": self.state.registry[self.tag]['unit'], "source_time": self.state.current['source_time'], "points": [
                 {"source_time": event["source_time"], **event["sensors"][self.tag]} for event in self.state.history[-30:]]}
         if name == "get_deviation_summary":
             return sensor_summary(self.state, self.tag)
         role = {"get_operating_targets": "target", "get_current_controls": "control"}.get(name)
         result = {"equipment": self.equipment, "source_time": self.state.current["source_time"],
+                "units": {tag: self.state.registry[tag]['unit'] for tag in self.tags},
+                "unit_basis": {tag: self.state.registry[tag]['unit_basis'] for tag in self.tags},
                 "sensors": {tag: self.state.current["sensors"][tag] for tag in self.tags
                             if role is None or self.state.registry[tag]["measurement_type"] == role}}
         if name == 'get_operating_targets':
