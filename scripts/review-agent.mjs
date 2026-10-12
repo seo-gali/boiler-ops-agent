@@ -81,10 +81,16 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
   const report = { mode, started_at: new Date().toISOString(), input_sha256: profile.sha256,
     start_row: forecastModel.test_start_row, tag, model: null, questions: [], passed: false };
   const save = () => writeFileSync(resolve(out, 'questions.json'), JSON.stringify(report, null, 2));
+  const registry = await (await apiFetch('http://127.0.0.1:8000/api/registry')).json();
+  async function selectQuestionSensor(sensor) {
+    if (!await page.locator('#workspace-panel').isVisible()) await page.locator('#open-agent').click();
+    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
+    await page.getByLabel('설비 분류', { exact: true }).selectOption(registry.sensors[sensor].equipment);
+    await page.getByLabel('선택 센서', { exact: true }).selectOption(sensor);
+    await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
+  }
   try {
-    await page.getByRole('button', { name: '04 재열기', exact: true }).click();
-    await page.getByLabel('선택 센서', { exact: true }).selectOption(tag);
-    await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
+    await selectQuestionSensor(tag);
     await poll(async () => await page.getByTestId('sequence').textContent() === '16', 'agent review source sequence');
     for (const [intent, question] of questions) {
       const entry = { intent, question, request: { question, equipment: 'reheater', tag } };
@@ -166,8 +172,7 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
       assert.ok(report.questions.every(entry => entry.semantic_passed), 'Every answer meets the five question criteria');
       report.edge_cases = [];
       async function edge(name, sensor, question, verify) {
-        await page.locator('#open-agent').click();
-        await page.getByLabel('선택 센서', { exact: true }).selectOption(sensor);
+        await selectQuestionSensor(sensor);
         await page.getByLabel('질문', { exact: true }).fill(question);
         const pending = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
         const started = performance.now();

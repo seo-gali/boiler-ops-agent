@@ -23,7 +23,6 @@ export default function App() {
   const returnFocus = useRef<HTMLElement | null>(null);
   const header = useRef<HTMLDivElement>(null);
   const { user, logout } = useSession();
-  const [agentTrace, setAgentTrace] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const paused = usePaused();
   const telemetry = useTelemetry();
@@ -50,10 +49,9 @@ export default function App() {
   };
   const onSelect = useCallback((tag: string) => {
     if (!tab) returnFocus.current = document.activeElement as HTMLElement;
-    if (selected !== tag) setAgentTrace(null);
     setSelected(tag);
     setTab(previous => previous ?? 'sensor');
-  }, [selected, tab]);
+  }, [tab]);
   const onEquipment = useCallback((id: string) => {
     const item = registry?.equipment.find(item => item.id === id);
     if (item) onSelect(item.primary_tag);
@@ -70,9 +68,6 @@ export default function App() {
     <div className="workspace-header" ref={header}><header className="topbar"><a href="/" className="brand" aria-label="BoilerOps Agent 홈"><span className="brand-mark" aria-hidden="true">B</span>BoilerOps <span>AGENT</span></a><div className="workspace-label">OPERATIONS WORKSPACE <b>한국중부발전 · 공개 운전데이터</b></div><span className={`status ${status.toLowerCase()}`} data-testid="stream-status" role="status">● {status}</span><button className="session-logout" onClick={logout}>{user.user_id} · 로그아웃</button><button id="menu-toggle" className="menu-toggle" aria-expanded={menuOpen} aria-controls="page-nav" onClick={() => setMenuOpen(!menuOpen)}>메뉴</button></header>
     <nav id="page-nav" className={`page-nav ${menuOpen ? 'open' : ''}`} aria-label="페이지 메뉴" onKeyDown={event => { if (event.key === 'Escape') { setMenuOpen(false); document.getElementById('menu-toggle')?.focus(); } }}>
       {[['monitoring', '모니터링'], ['analysis', '운전 분석'], ['forecast', '온도 예측']].map(([id, label]) => <a key={id} href={`#${id}`} onClick={() => { setMenuOpen(false); document.getElementById(id)?.focus(); }}>{label}</a>)}
-      <button id="open-agent" aria-controls="workspace-panel" aria-expanded={tab === 'agent'} onClick={() => openPanel('agent')}><span aria-hidden="true" className="ai-icon">✦</span> AI 질문</button>
-      <button aria-controls="workspace-panel" aria-expanded={tab === 'simulator'} onClick={() => openPanel('simulator')}>승인 연습</button>
-      <button aria-controls="workspace-panel" aria-expanded={tab === 'audit'} onClick={() => openPanel('audit')}>변경 기록</button>
     </nav></div>
     <main id="main" tabIndex={-1}>
     <div className="page-heading"><div><span className="eyebrow">REALTIME MONITORING</span><h1>운전 현황 <span>Historical replay</span></h1></div><div className="connections"><span>Kafka <b data-testid="kafka-status">{telemetry.kafka}</b></span><span>WebSocket <b data-testid="ws-status">{connection}</b></span><span>Replay <b>{telemetry.replay_interval_ms || '—'} ms</b></span></div></div>
@@ -88,8 +83,8 @@ export default function App() {
     <OperationsAnalysis />
     <ForecastPanel />
     </main>
-    <footer><span>© {new Date().getFullYear()} BoilerOps Agent · 공개 데이터 재생</span><a href="#main">본문 처음으로</a><button onClick={() => openPanel('simulator')}>승인 연습 열기</button><span>관측 데이터 · 산업 안전 판정 없음</span></footer>
-    <div className="workspace-launchers" hidden={!!tab}><button className="primary-button" aria-label="AI 도우미 열기" onClick={() => openPanel('agent')}><span aria-hidden="true">✦</span> AI 질문</button><button onClick={() => openPanel('simulator')}>승인 연습</button></div>
-    {registry && <WorkspacePanel registry={registry} selected={selected} tab={tab} onTab={setTab} onClose={closePanel} onSelect={onSelect} agentTrace={agentTrace} onTrace={setAgentTrace} />}
+    <footer><span>© {new Date().getFullYear()} BoilerOps Agent · 공개 데이터 재생</span><a href="#main">본문 처음으로</a><span>관측 데이터 · 산업 안전 판정 없음</span></footer>
+    <div className="workspace-launchers" hidden={!!tab}><button id="open-agent" className="primary-button" aria-label="AI 도우미 열기" title="AI 도우미 열기" aria-controls="workspace-panel" aria-expanded={false} onClick={() => openPanel('agent')}><span aria-hidden="true">✦</span><span>AI</span></button></div>
+    {registry && <WorkspacePanel registry={registry} selected={selected} tab={tab} onTab={setTab} onClose={closePanel} onSelect={onSelect} />}
   </div>;
 }

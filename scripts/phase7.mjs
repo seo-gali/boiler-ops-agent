@@ -83,6 +83,7 @@ export async function validateFailures({ page, context, env, out, root, python, 
     const tag = equipment.primary_tag;
     if (!tag) continue;
     await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
+    await page.getByLabel('설비 분류', { exact: true }).selectOption(registry.sensors[tag].equipment);
     await page.getByLabel('선택 센서', { exact: true }).selectOption(tag);
     const value = await page.getByTestId('inspector-value').textContent();
     assert.ok((await page.getByTestId(`marker-${tag}`).textContent()).includes(value));

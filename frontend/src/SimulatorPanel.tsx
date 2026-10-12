@@ -3,9 +3,9 @@ import { useEffect, useState } from 'react';
 
 type Proposal = { id: string; old_value: number; requested_value: number; expected_revision: number; status: string; expires_at: number; source_trace_id: string };
 type State = { value: number; revision: number; enabled: boolean; proposals: Proposal[] };
-export function SimulatorPanel({ agentTrace, active = true, onAudit, onPrepare }: { agentTrace: string | null; active?: boolean; onAudit: () => void; onPrepare: () => void }) {
+export function SimulatorPanel({ agentTrace, active = true, canPrepare = true, onAudit, onPrepare }: { agentTrace: string | null; active?: boolean; canPrepare?: boolean; onAudit: () => void; onPrepare: () => void }) {
   const [state, setState] = useState<State | null>(null);
-  const [intent, setIntent] = useState('연습용 값을 한 단계 높여 주세요.');
+  const [intent, setIntent] = useState('');
   const [confirmed, setConfirmed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -31,6 +31,6 @@ export function SimulatorPanel({ agentTrace, active = true, onAudit, onPrepare }
   }
   const proposal = state?.proposals[0];
   return <section id="simulator" tabIndex={-1} className="simulator panel" aria-label="Simulator 승인"><div className="panel-heading"><div><span className="eyebrow">CONTROLLED SIMULATOR</span><h2>변경 승인 연습</h2></div><span className="quiet">실제 설비 연결 없음</span></div><div className="agent-content"><p className="note">연습용 숫자를 −10~10 안에서 한 번에 최대 1만큼 바꿉니다. 실제 보일러나 온도는 바뀌지 않습니다.</p><div className="analysis-stats"><span>현재 Simulator 값<b data-testid="sim-value">{state?.value ?? '—'}</b></span><span>변경 횟수<b>{state?.revision ?? '—'}</b></span></div>{!state?.enabled && <p className="note">제안과 승인은 운영자 계정에서 사용할 수 있습니다.</p>}
-      <label htmlFor="sim-intent">Simulator 요청</label><input id="sim-intent" value={intent} onChange={event => setIntent(event.target.value)} maxLength={500} /><button className="primary-button" disabled={!state?.enabled || !agentTrace || busy || !intent.trim()} onClick={propose}>{busy ? '처리 중…' : 'Agent Simulator 제안 생성'}</button>{!agentTrace && <div className="prepare-evidence"><p>먼저 재열기 센서를 선택하고 AI로 현재값을 조회하세요.</p><button onClick={onPrepare}>재열기 선택하고 AI 질문으로 이동</button></div>}
+      <label htmlFor="sim-intent">Simulator 요청</label><input id="sim-intent" placeholder="예: 연습용 값을 한 단계 높여 주세요" value={intent} onChange={event => setIntent(event.target.value)} maxLength={500} /><button className="primary-button" disabled={!state?.enabled || !agentTrace || busy || !intent.trim()} onClick={propose}>{busy ? '처리 중…' : 'Agent Simulator 제안 생성'}</button>{!agentTrace && <div className="prepare-evidence"><p>{canPrepare ? '먼저 재열기 센서를 선택하고 AI로 현재값을 조회하세요.' : '진행 중인 AI 답변을 기다리거나 대기를 취소하세요.'}</p><button disabled={!canPrepare} onClick={onPrepare}>재열기 선택하고 AI 질문으로 이동</button></div>}
       <p id="sim-feedback" tabIndex={-1} role="status">{busy ? "Simulator 요청 처리 중입니다." : message}</p>{proposal && <div className="proposal"><h3>승인 대상: {proposal.old_value} → {proposal.requested_value}</h3><p data-testid="proposal-status">{proposal.status}</p><p className="quiet">제안 ID {proposal.id} · Revision {proposal.expected_revision} · 만료 {new Date(proposal.expires_at * 1000).toLocaleTimeString()}</p>{proposal.status === 'pending' && <><label className="confirm-label"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />위 Simulator 변경값과 데모 정책을 확인했습니다.</label><div className="decision-buttons"><button disabled={!state?.enabled || !confirmed || busy} onClick={() => decide(proposal, false)}>거절</button><button className="primary-button" disabled={!state?.enabled || !confirmed || busy} onClick={() => decide(proposal, true)}>승인 및 Simulator 실행</button></div></>}</div>}{error && <p role="alert">{error}</p>}<button className="record-link" onClick={onAudit}>승인·변경 기록 보기</button></div></section>;
 }

@@ -24,7 +24,7 @@ FILES = [
     'frontend/src/telemetry.ts', 'frontend/src/App.tsx', 'frontend/src/AgentPanel.tsx',
     'frontend/src/SimulatorPanel.tsx', 'frontend/src/ForecastPanel.tsx',
     'frontend/src/BoilerScene.tsx', 'frontend/src/WorkspacePanel.tsx',
-    'frontend/src/SensorInspector.tsx', 'frontend/src/RecordsPanel.tsx',
+    'frontend/src/SensorPicker.tsx', 'frontend/src/SensorInspector.tsx', 'frontend/src/RecordsPanel.tsx',
     'scripts/import-sensor-definitions.py', 'scripts/dataset_path.py',
 ]
 

@@ -142,15 +142,20 @@ try {
   assert.equal(await page.getByTestId('source-time').textContent(), expected.source_time);
   assert.equal(await page.getByTestId('kpi-실제 출력값').textContent(), Number(expected.measurements['실제 출력값']).toLocaleString('en-US'));
   await page.getByTestId('kpi-총 주증기 유량').click();
-  const marker = page.getByTestId('marker-총 주증기 유량');
-  await marker.click();
   assert.equal(await page.getByTestId('inspector-tag').textContent(), '총 주증기 유량');
   assert.equal(await page.getByTestId('inspector-value').textContent(), Number(expected.measurements['총 주증기 유량']).toLocaleString('en-US'));
+  const sceneRegistry = await (await apiFetch(`${base}/api/registry`)).json();
+  const primaryTag = sceneRegistry.equipment.find(item => item.id === sceneRegistry.sensors['총 주증기 유량'].equipment).primary_tag;
+  const marker = page.getByTestId(`marker-${primaryTag}`);
+  assert.ok((await marker.textContent()).includes(Number(expected.measurements[primaryTag]).toLocaleString('en-US')));
+  await marker.click();
+  assert.equal(await page.getByTestId('inspector-tag').textContent(), primaryTag);
+  assert.equal(await page.getByTestId('inspector-value').textContent(), Number(expected.measurements[primaryTag]).toLocaleString('en-US'));
   assert.ok((await marker.textContent()).includes(await page.getByTestId('inspector-value').textContent()));
   assert.equal(await page.getByTestId('inspector-time').textContent(), expected.source_time);
   await page.screenshot({ path: resolve(out, 'selected-sensor.png'), fullPage: true });
   await page.screenshot({ path: resolve(root, 'docs/images/dashboard.jpg'), type: 'jpeg', quality: 78 });
-  pass('KPI, Scene marker, selected Inspector and operations feed agree');
+  pass('KPI opens its sensor; fixed Scene representative and selected Inspector match the source');
   await poll(async () => (await page.getByTestId('stream-status').textContent()).includes('STALE'), 'stale visible', 10000);
   pass('Replay end displays STALE');
   backend.kill();
@@ -214,7 +219,8 @@ try {
   }
   if (Number(phase.replace('phase', '')) >= 4) {
     const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
-    await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
+    await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
+    await page.getByLabel('질문', { exact: true }).fill('선택 설비의 현재값과 변화 추이를 근거와 함께 설명해줘.');
     await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
     const response = await responsePromise;
     const answer = await response.json();
@@ -248,7 +254,10 @@ try {
     assert.equal(await page.getByTestId('forecast-value').textContent(), forecast.prediction.toFixed(2));
     const tool = await (await apiFetch(`${base}/api/tools/get_temperature_forecast?equipment=reheater`)).json();
     assert.equal(tool.prediction, forecast.prediction);
-    await page.getByLabel('선택 센서', { exact: true }).selectOption('최종재열기 입구 온도 평균값');
+    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
+    await page.getByLabel('설비 분류', { exact: true }).selectOption(sceneRegistry.sensors[forecastModel.target].equipment);
+    await page.getByLabel('선택 센서', { exact: true }).selectOption(forecastModel.target);
+    await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
     await page.getByLabel('질문', { exact: true }).fill('Use get_temperature_forecast to report the 5-minute predicted temperature. Cite prediction evidence.');
     const agentResponse = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
     await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
@@ -266,7 +275,8 @@ try {
   if (Number(phase.replace('phase', '')) >= 6) {
     const stateBefore = await (await apiFetch(`${base}/api/simulator`)).json();
     const proposalResponse = page.waitForResponse(response => response.url().endsWith('/api/simulator/proposals'), { timeout: 180000 });
-    await page.getByRole('tab', { name: '승인 연습', exact: true }).click();
+    await page.getByText('추가 기능 · 변경 승인 연습', { exact: true }).click();
+    await page.getByLabel('Simulator 요청', { exact: true }).fill('Increase the local demo parameter by one synthetic step.');
     await page.getByRole('button', { name: 'Agent Simulator 제안 생성', exact: true }).click();
     const created = await proposalResponse;
     const proposal = await created.json();
@@ -287,7 +297,9 @@ try {
     await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
     assert.equal((await freshResponse).status(), 200);
     const rejectResponse = page.waitForResponse(response => response.url().endsWith('/api/simulator/proposals'), { timeout: 180000 });
-    await page.getByRole('tab', { name: '승인 연습', exact: true }).click();
+    if (await page.locator('.simulator-disclosure').getAttribute('open') === null) {
+      await page.getByText('추가 기능 · 변경 승인 연습', { exact: true }).click();
+    }
     await page.getByRole('button', { name: 'Agent Simulator 제안 생성', exact: true }).click();
     const rejectedProposal = await (await rejectResponse).json();
     await page.getByRole('checkbox').check();

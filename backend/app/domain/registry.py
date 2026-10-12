@@ -4,13 +4,13 @@ from pathlib import Path
 DEFINITIONS = json.loads(Path(__file__).with_name('sensor_definitions.json').read_text(encoding='utf-8'))
 
 EQUIPMENT = [
-    {"id": "feeders", "label": "Feeders", "name": "급탄기", "description": "석탄을 공급하는 설비입니다. 급탄기 속도와 관련 값을 확인합니다.", "primary_tag": "급탄기 A 속도 평균값 ", "position": [-6, 0, 1], "size": [1.6, 1.7, 2.4]},
-    {"id": "furnace", "label": "Furnace", "name": "화로", "description": "연료를 태워 열을 만드는 공간입니다. 노내 튜브와 헤더의 온도를 확인합니다.", "primary_tag": "노내 상부 좌측부 튜브 헤더 출구 온도 평균값", "position": [-3, 0, 0], "size": [2.3, 5.4, 2.5]},
-    {"id": "superheater", "label": "Superheater", "name": "과열기", "description": "증기를 더 가열하는 설비입니다. 출구 온도와 주증기 관련 값을 확인합니다.", "primary_tag": "최종과열기 출구 온도 평균값", "position": [0, 0, -0.4], "size": [1.9, 4.1, 2]},
-    {"id": "reheater", "label": "Reheater", "name": "재열기", "description": "터빈을 거친 증기를 다시 가열하는 설비입니다. 이 앱의 5분 예측 대상입니다.", "primary_tag": "최종재열기 입구 온도 평균값", "position": [0.1, 0, 2.3], "size": [1.6, 2.8, 1.4]},
-    {"id": "economizer", "label": "Economizer", "name": "절탄기", "description": "배기가스의 열로 급수를 예열하는 설비입니다. 입구 급수 온도를 확인합니다.", "primary_tag": "절탄기 입구 급수 온도 중간값", "position": [2.7, 0, -0.2], "size": [1.8, 3.2, 2]},
-    {"id": "scr", "label": "SCR", "name": "탈질 설비", "description": "촉매를 이용해 질소산화물을 줄이는 설비입니다. 배기가스 입구 온도를 확인합니다.", "primary_tag": "선택적 촉매 환원장치A 배기가스 입구 온도 평균값", "position": [5.2, 0, -0.3], "size": [1.6, 2.4, 1.8]},
-    {"id": "stack", "label": "Stack", "name": "굴뚝", "description": "배기가스를 내보내는 통로입니다. 산소와 질소산화물 관련 값을 확인합니다.", "primary_tag": "배기가스 산소 중간값", "position": [7.6, 0, -0.5], "size": [0.9, 5.2, 0.9]},
+    {"id": "feeders", "label": "Feeders", "name": "급탄기", "description": "석탄을 공급하는 설비입니다. 급탄기 속도와 관련 값을 확인합니다.", "primary_tag": "급탄기 A 속도 평균값 ", "position": [-7.45, 0, 3.54], "size": [1.8, 1.9, 1.7]},
+    {"id": "furnace", "label": "Furnace", "name": "화로", "description": "연료를 태워 열을 만드는 공간입니다. 노내 튜브와 헤더의 온도를 확인합니다.", "primary_tag": "노내 상부 좌측부 튜브 헤더 출구 온도 평균값", "position": [-3.59, 0, 0.36], "size": [2.1, 4.2, 1.9]},
+    {"id": "superheater", "label": "Superheater", "name": "과열기", "description": "증기를 더 가열하는 설비입니다. 출구 온도와 주증기 관련 값을 확인합니다.", "primary_tag": "최종과열기 출구 온도 평균값", "position": [0.27, 0, -2.82], "size": [2, 3, 1.4]},
+    {"id": "reheater", "label": "Reheater", "name": "재열기", "description": "터빈을 거친 증기를 다시 가열하는 설비입니다. 이 앱의 5분 예측 대상입니다.", "primary_tag": "최종재열기 입구 온도 평균값", "position": [4.13, 0, -6], "size": [2.3, 2.3, 1.5]},
+    {"id": "economizer", "label": "Economizer", "name": "절탄기", "description": "배기가스의 열로 급수를 예열하는 설비입니다. 입구 급수 온도를 확인합니다.", "primary_tag": "절탄기 입구 급수 온도 중간값", "position": [-0.68, 0, 7.04], "size": [2.5, 1.9, 1.8]},
+    {"id": "scr", "label": "SCR", "name": "탈질 설비", "description": "촉매를 이용해 질소산화물을 줄이는 설비입니다. 배기가스 입구 온도를 확인합니다.", "primary_tag": "선택적 촉매 환원장치A 배기가스 입구 온도 평균값", "position": [3.18, 0, 3.86], "size": [2, 2.5, 1.8]},
+    {"id": "stack", "label": "Stack", "name": "굴뚝", "description": "배기가스를 내보내는 통로입니다. 산소와 질소산화물 관련 값을 확인합니다.", "primary_tag": "배기가스 산소 중간값", "position": [7.04, 0, 0.68], "size": [1, 3.7, 1]},
 ]
 
 REPRESENTATIVE = {

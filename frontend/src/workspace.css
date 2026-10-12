@@ -43,15 +43,14 @@ kbd { border: 1px solid #9ba89b; border-radius: 4px; padding: 2px 6px; font-size
 .equipment-nav button small { color: #536354; font-size: 12px; font-weight: 400; line-height: 1.6; }
 .process-flows { display: block; }
 .process-flows div { margin-top: 8px; }
-.workspace-launchers { position: fixed; right: 22px; bottom: 22px; display: flex; gap: 8px; z-index: 35; padding: 8px; border: 1px solid #c3cec0; border-radius: 8px; background: #fff; box-shadow: 0 3px 15px #263a321a; }
-.workspace-launchers button { border: 1px solid #55745b; padding: 9px 14px; border-radius: 5px; }
-.workspace-launchers button:not(.primary-button) { background: #f5f7f2; }
+.workspace-launchers { position: fixed; right: 22px; bottom: 22px; z-index: 35; }
+.workspace-launchers button { display: flex; align-items: center; justify-content: center; gap: 5px; width: 64px; height: 48px; padding: 0; border: 1px solid #55745b; border-radius: 24px; box-shadow: 0 3px 15px #263a3226; font-weight: 650; }
 .workspace-panel { position: fixed; top: 0; right: 0; bottom: 0; width: 440px; z-index: 45; background: #fff; border-left: 1px solid #c7d1c6; display: flex; flex-direction: column; box-shadow: -4px 0 20px #233d3110; }
 .workspace-panel-heading { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; gap: 12px; }
 .workspace-panel-heading h2 { margin: 3px 0 0; font-size: 20px; }
 .workspace-panel button:not(.primary-button), footer button { color: #263a32; }
 .workspace-panel-heading button { background: #f5f7f2; border: 1px solid #bdcbb9; padding: 8px 12px; border-radius: 5px; }
-.workspace-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid #c7d1c6; padding: 0 12px; }
+.workspace-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 1px solid #c7d1c6; padding: 0 12px; }
 .workspace-tabs button { padding: 10px 4px; background: #fff; border: 0; border-bottom: 3px solid transparent; font-size: 13px; }
 .workspace-tabs button[aria-selected=true] { border-bottom-color: #34563e; font-weight: 700; color: #214a34; background: #edf2e9; }
 .workspace-scroll { overflow-y: auto; overscroll-behavior: contain; min-height: 0; flex: 1; }
@@ -59,6 +58,25 @@ kbd { border: 1px solid #9ba89b; border-radius: 4px; padding: 2px 6px; font-size
 .workspace-context label { font-size: 12px; font-weight: 650; }
 .workspace-context select { width: 100%; padding: 10px; margin: 6px 0 0; background: #fff; border: 1px solid #788579; font: inherit; border-radius: 4px; }
 .workspace-context p { margin: 6px 0 0; }
+.sensor-filters { display: grid; grid-template-columns: 125px minmax(0, 1fr); gap: 8px; margin: 12px 0; }
+.sensor-filters > div { min-width: 0; }
+.sensor-picker label { display: block; }
+.sensor-picker input { width: 100%; min-width: 0; height: 44px; margin-top: 6px; padding: 8px; border: 1px solid #788579; border-radius: 4px; background: #fff; }
+.sensor-picker select { min-width: 0; min-height: 44px; font-size: 13px; }
+.question-context-note { padding: 12px 20px; background: #f5f2e8; border-bottom: 1px solid #ded8c6; font-size: 12px; line-height: 1.6; }
+.question-context-note p { margin: 0 0 6px; }
+.question-context-note small { display: block; margin-top: 6px; }
+.question-context-note button, .agent-actions button:not(.primary-button) { padding: 8px 12px; background: #fff; border: 1px solid #8ca082; border-radius: 4px; }
+.agent-target { border-left: 3px solid #527b60; padding: 8px 12px; margin-bottom: 16px; background: #f2f6ee; }
+.agent-target p { margin: 4px 0 0; font-size: 14px; line-height: 1.5; }
+.agent-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.agent-waiting { background: #f2f6ee; border: 1px solid #d3dfcb; padding: 12px; border-radius: 4px; }
+.agent-waiting p { margin: 0; }
+.agent-waiting .quiet { display: block; margin-top: 8px; }
+.simulator-disclosure { margin: 16px 20px 24px; border-top: 1px solid #dce2da; }
+.simulator-disclosure > summary { padding: 12px 0; font-size: 13px; }
+.workspace-panel .simulator-disclosure .panel-heading, .workspace-panel .simulator-disclosure .agent-content { padding-inline: 0; }
+.pending-dot { color: #34563e; }
 .workspace-panel .panel { border: 0; margin: 0; }
 .workspace-panel .panel-heading { border: 0; padding-bottom: 0; }
 .workspace-panel .panel-heading h2 { font-size: 17px; font-weight: 650; }
@@ -102,7 +120,6 @@ footer button { background: none; border: 0; text-decoration: underline; padding
   .workspace-panel-heading h2 { font-size: 17px; }
   .workspace-panel-heading .eyebrow { display: none; }
   .workspace-context { padding: 10px 16px; }
-  .workspace-context p { display: none; }
   .workspace-launchers { right: 12px; bottom: 12px; }
 }
 @media (max-width: 600px) {
