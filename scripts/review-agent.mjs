@@ -85,8 +85,8 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
   async function selectQuestionSensor(sensor) {
     if (!await page.locator('#workspace-panel').isVisible()) await page.locator('#open-agent').click();
     await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
-    await page.getByLabel('설비 분류', { exact: true }).selectOption(registry.sensors[sensor].equipment);
-    await page.getByLabel('선택 센서', { exact: true }).selectOption(sensor);
+    await page.locator('#sensor-group').selectOption(registry.sensors[sensor].equipment);
+    await page.getByTestId(`sensor-option-${sensor}`).click();
     await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
   }
   try {
@@ -123,8 +123,8 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
         assert.equal(reading.raw, source.measurements[sensor]);
         assert.equal(reading.value, source.measurements[sensor].trim() === '' ? null : Number(source.measurements[sensor]));
       }
-      await page.getByTestId('agent-answer').waitFor();
-      entry.displayed_text = await page.getByTestId('agent-answer').innerText();
+      await poll(async () => (await page.getByTestId('agent-answer').last().innerText()).includes(entry.answer.answer), 'latest answer displayed');
+      entry.displayed_text = await page.getByTestId('agent-answer').last().innerText();
       assert.ok(entry.displayed_text.includes(entry.answer.answer), 'Browser displays server answer');
       assert.ok(entry.displayed_text.includes(entry.answer.limitations), 'Browser displays limitations');
       verifySource(entry, profile, forecastModel);
@@ -184,8 +184,8 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
         const entry = { name, question, sensor, elapsed_ms: Math.round(performance.now() - started), answer, trace, passed: false };
         report.edge_cases.push(entry);
         save();
-        await page.getByTestId('agent-answer').waitFor();
-        assert.ok((await page.getByTestId('agent-answer').innerText()).includes(answer.answer));
+        await poll(async () => (await page.getByTestId('agent-answer').last().innerText()).includes(answer.answer), 'latest edge answer displayed');
+        assert.ok((await page.getByTestId('agent-answer').last().innerText()).includes(answer.answer));
         verify(answer, trace);
         await page.locator('#agent').screenshot({ path: resolve(out, `${name}.png`) });
         entry.passed = true;

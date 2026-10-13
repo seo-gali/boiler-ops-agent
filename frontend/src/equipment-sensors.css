@@ -1,0 +1,29 @@
+.equipment-sensors { min-width: 0; min-height: 0; display: flex; flex-direction: column; background: #fffef8; border: 2px solid #355479; border-radius: 16px; box-shadow: 0 5px 0 #29446725, 0 8px 24px #213c5920; overflow: hidden; max-height: 720px; }
+.equipment-sensors > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 13px 14px; background: #eff5ff; border-bottom: 1px solid #ccdaeb; }
+.equipment-sensors h3 { margin: 3px 0 0; color: #243f61; font-size: 17px; }
+.equipment-sensors h3 small { font-size: 11px; font-weight: 500; margin-left: 5px; }
+.equipment-list-kicker { font-size: 9px; color: #506685; letter-spacing: 1.3px; }
+.equipment-sensors .equipment-popup-close { width: 36px; height: 36px; min-height: 36px; padding: 0; flex: 0 0 36px; font-size: 22px; color: #284a71; background: #fff; border: 1px solid #b4c7de; border-radius: 9px; }
+.equipment-list-description { margin: 0; padding: 10px 14px 4px; font-size: 11px; color: #4e6172; line-height: 1.6; }
+.equipment-list-search { padding: 9px 14px; font-size: 11px; color: #405774; }
+.equipment-list-search span { display: block; margin-bottom: 5px; font-weight: 600; }
+.equipment-list-search input { width: 100%; border: 1px solid #a5b8cf; background: #fff; border-radius: 8px; padding: 8px 9px; min-height: 38px; font-size: 12px; }
+.equipment-list-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; padding: 0 14px 9px; font-size: 10px; color: #536779; }
+.equipment-list-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 0 9px 12px; min-height: 0; flex: 1; }
+.equipment-area h4 { margin: 10px 5px 6px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #385c80; }
+.equipment-area h4 span { padding: 1px 5px; font-size: 9px; border-radius: 5px; background: #e7eef6; }
+.equipment-area ul { list-style: none; padding: 0; margin: 0; display: grid; gap: 5px; }
+.equipment-sensors .equipment-sensor-row { width: 100%; text-align: left; display: grid; gap: 7px; padding: 10px 9px; border: 1px solid #d2dce7; border-radius: 9px; background: #fff; color: #2c4159; }
+.equipment-sensors .equipment-sensor-row:hover { background: #f0f6ff; border-color: #6388b0; }
+.equipment-sensors .equipment-sensor-row[aria-pressed=true] { background: #edf4ff; border: 2px solid #386eaa; padding: 9px 8px; box-shadow: inset 3px 0 #386eaa; }
+.equipment-sensor-title { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; font-size: 12px; line-height: 1.5; }
+.equipment-sensor-title b { color: #275587; background: #d8e8fc; border-radius: 4px; padding: 1px 5px; font-size: 9px; font-weight: 600; }
+.equipment-sensor-reading { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px; }
+.equipment-sensor-reading strong { font-size: 18px; font-variant-numeric: tabular-nums; }
+.equipment-sensor-reading > span { color: #4e647a; font-size: 10px; }
+.equipment-sensor-reading small { margin-left: auto; color: #526779; font-size: 9px; }
+.equipment-sensor-reading small[data-quality=missing], .equipment-sensor-reading small[data-quality=parse_error] { color: #6c4d30; background: #fff0df; border-radius: 3px; padding: 1px 4px; }
+.equipment-sensors > footer { display: block; border-top: 1px solid #d0ddea; padding: 9px 14px; margin: 0; background: #f3f7fc; }
+.equipment-sensors > footer p { font-size: 10px; line-height: 1.6; color: #536779; margin: 0 0 6px; }
+.equipment-sensors .equipment-inspect { width: 100%; padding: 8px; font-size: 11px; min-height: 38px; border: 1px solid #587da7; border-radius: 7px; background: #fff; color: #315e8f; }
+@media (max-width: 700px) { .equipment-sensors { max-height: 480px; } }

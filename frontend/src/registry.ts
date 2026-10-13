@@ -2,7 +2,7 @@ import type { Registry } from './types';
 
 export function validateRegistry(value: Registry): Registry {
   if (!value || !Array.isArray(value.equipment) || !Array.isArray(value.flows) || !value.sensors || typeof value.sensors !== 'object') throw new Error('Registry contract is invalid');
-  const equipment = new Set([...value.equipment.map(item => item.id), 'generation', 'unmapped']);
+  const equipment = new Set([...value.equipment.map(item => item.id), 'main-steam', 'generation', 'unmapped']);
   for (const item of value.equipment) {
     if (!item.name || !item.description || value.sensors[item.primary_tag]?.equipment !== item.id) throw new Error(`Registry 대표 센서 오류: ${item.id}`);
   }

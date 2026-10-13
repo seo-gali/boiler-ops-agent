@@ -145,7 +145,8 @@ try {
   assert.equal(await page.getByTestId('inspector-tag').textContent(), '총 주증기 유량');
   assert.equal(await page.getByTestId('inspector-value').textContent(), Number(expected.measurements['총 주증기 유량']).toLocaleString('en-US'));
   const sceneRegistry = await (await apiFetch(`${base}/api/registry`)).json();
-  const primaryTag = sceneRegistry.equipment.find(item => item.id === sceneRegistry.sensors['총 주증기 유량'].equipment).primary_tag;
+  assert.equal(sceneRegistry.sensors['총 주증기 유량'].equipment, 'main-steam');
+  const primaryTag = sceneRegistry.equipment.find(item => item.id === 'superheater').primary_tag;
   const marker = page.getByTestId(`marker-${primaryTag}`);
   assert.ok((await marker.textContent()).includes(Number(expected.measurements[primaryTag]).toLocaleString('en-US')));
   await marker.click();
@@ -176,8 +177,9 @@ try {
     };
   });
   await fallback.goto(frontendUrl);
-  await fallback.getByText('3D VIEW UNAVAILABLE').waitFor();
+  await fallback.getByText('3D 화면을 표시할 수 없습니다').waitFor();
   await fallback.getByRole('button', { name: '02 화로', exact: true }).click();
+  await fallback.getByTestId('equipment-sensors').getByRole('button', { name: '선택 센서 자세히 보기', exact: false }).click();
   await fallback.getByTestId('inspector-tag').waitFor();
   await fallback.screenshot({ path: resolve(out, 'fallback.png'), fullPage: true });
   pass('WebGL unavailable retains selectable equipment and live values');
@@ -192,6 +194,7 @@ try {
     }
     const tag = '급탄기 A 속도 평균값 ';
     await page.getByRole('button', { name: '01 급탄기', exact: true }).click();
+    await page.getByTestId('equipment-sensors').getByRole('button', { name: '선택 센서 자세히 보기', exact: false }).click();
     assert.equal(await page.getByTestId('inspector-tag').textContent(), tag);
     await page.getByRole('img', { name: `${tag} 최근 추이` }).waitFor();
     const history = await (await apiFetch(`${base}/api/sensors/history?tag=${encodeURIComponent(tag)}`)).json();
@@ -211,9 +214,18 @@ try {
     const reheater = await (await apiFetch(`${base}/api/analysis/loop?name=reheater`)).json();
     assert.equal(reheater.target_available, false);
     assert.ok(reheater.points.every(point => point.actual_minus_target === null));
-    await page.getByTestId('target-missing').waitFor();
-    await page.getByRole('combobox', { name: '분석 Loop' }).selectOption('generation');
-    await poll(async () => await page.getByTestId('target-delta-16').textContent() === delta.toLocaleString('en-US', { maximumFractionDigits: 3 }), 'actual vs target UI');
+    await page.getByRole('link', { name: '기간 조회', exact: true }).click();
+    await page.getByTestId('history-availability').waitFor();
+    await page.getByLabel('조회 센서', { exact: true }).selectOption('실제 출력값');
+    await page.getByLabel('시작 시각', { exact: true }).fill(profile.first_rows[0].source_time.replace(' ', 'T'));
+    await page.getByLabel('종료 시각', { exact: true }).fill(expected.source_time.replace(' ', 'T'));
+    await page.getByRole('button', { name: '기간 조회', exact: true }).click();
+    await page.getByTestId('history-chart').waitFor();
+    assert.ok((await page.getByTestId('history-sampling').textContent()).includes('원본 16개'));
+    await page.getByRole('link', { name: '공장 모니터링', exact: true }).click();
+    await page.getByTestId('kpi-실제 출력값').click();
+    await page.locator('#sensor-group').selectOption('feeders');
+    await page.getByTestId('sensor-option-급탄기 A 속도 평균값 ').click();
     writeFileSync(resolve(out, 'analysis.json'), JSON.stringify({ generation, reheater }, null, 2));
     pass('Aligned loop actual/target/controls, missing target and prior-only distribution');
   }
@@ -226,7 +238,7 @@ try {
     const answer = await response.json();
     assert.equal(response.status(), 200, JSON.stringify(answer));
     assert.equal(answer.equipment, 'feeders');
-    await page.getByTestId('agent-answer').waitFor();
+    await page.getByTestId('agent-answer').last().waitFor();
     const trace = await (await apiFetch(`${base}/api/agent/traces/${answer.trace_id}`)).json();
     for (const evidence of answer.evidence) {
       const call = trace.calls.find(call => call.id === evidence.tool_id);
@@ -251,12 +263,15 @@ try {
     assert.ok(Date.parse(forecast.source_time) > Date.parse(forecast.validation_cutoff));
     assert.ok(forecastModel.test.naive.samples > 7000);
     assert.ok(Number.isFinite(forecastModel.test.linear_ar.rmse));
+    await page.getByRole('link', { name: '5분 예측', exact: true }).click();
+    await page.getByTestId('forecast-value').waitFor();
     assert.equal(await page.getByTestId('forecast-value').textContent(), forecast.prediction.toFixed(2));
     const tool = await (await apiFetch(`${base}/api/tools/get_temperature_forecast?equipment=reheater`)).json();
     assert.equal(tool.prediction, forecast.prediction);
-    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
-    await page.getByLabel('설비 분류', { exact: true }).selectOption(sceneRegistry.sensors[forecastModel.target].equipment);
-    await page.getByLabel('선택 센서', { exact: true }).selectOption(forecastModel.target);
+    await page.getByRole('link', { name: '공장 모니터링', exact: true }).click();
+    await page.getByTestId('kpi-실제 출력값').click();
+    await page.locator('#sensor-group').selectOption(sceneRegistry.sensors[forecastModel.target].equipment);
+    await page.getByTestId(`sensor-option-${forecastModel.target}`).click();
     await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
     await page.getByLabel('질문', { exact: true }).fill('Use get_temperature_forecast to report the 5-minute predicted temperature. Cite prediction evidence.');
     const agentResponse = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
@@ -294,6 +309,7 @@ try {
     assert.equal((await apiFetch(decisionUrl, { method: 'POST', headers, body: JSON.stringify(decision) })).status, 409);
     const freshResponse = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
     await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
+    await page.getByLabel('질문', { exact: true }).fill('현재 관측값과 최근 변화 추이를 근거와 함께 설명해 주세요.');
     await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
     assert.equal((await freshResponse).status(), 200);
     const rejectResponse = page.waitForResponse(response => response.url().endsWith('/api/simulator/proposals'), { timeout: 180000 });

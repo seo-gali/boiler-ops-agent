@@ -16,8 +16,8 @@ EQUIPMENT = [
 REPRESENTATIVE = {
     "실제 출력값": ("generation", "logical-group"),
     "목표 발전량": ("generation", "logical-group"),
-    "총 주증기 유량": ("superheater", "logical-group"),
-    "터빈용 주증기 압력": ("superheater", "logical-group"),
+    "총 주증기 유량": ("main-steam", "logical-group"),
+    "터빈용 주증기 압력": ("main-steam", "logical-group"),
     "최종과열기 출구 온도 평균값": ("superheater", "verified-by-tag"),
     "배기가스 산소 중간값": ("stack", "logical-group"),
     "과열기 스프레이 총 유량": ("superheater", "logical-group"),
@@ -41,7 +41,7 @@ def classify(tag):
         return REPRESENTATIVE[tag]
     groups = [
         (("선택적 촉매",), "scr"), (("재열",), "reheater"),
-        (("과열", "주증기"), "superheater"), (("절탄", "급수"), "economizer"),
+        (("주증기",), "main-steam"), (("과열",), "superheater"), (("절탄", "급수"), "economizer"),
         (("급탄", "석탄"), "feeders"), (("노내", "보일러 노", "기수분리", "버너", "공기", "산소 제어", "산소농도"), "furnace"),
         (("배기가스", "불투명도", "굴뚝"), "stack"), (("발전량", "출력값"), "generation"),
     ]

@@ -1,4 +1,5 @@
 import asyncio
+from datetime import datetime
 from uuid import UUID
 from contextlib import asynccontextmanager, suppress
 
@@ -12,6 +13,7 @@ from backend.app.config import Settings
 from backend.app.domain.registry import EQUIPMENT, PROCESS_FLOWS, make_registry
 from backend.app.domain.state import BoilerState
 from backend.app.domain.analysis import loop_analysis, sensor_summary
+from backend.app.domain.history import metadata as history_metadata, query_range as history_range
 from backend.app.agent.tools import ReadTools
 from backend.app.agent.service import AgentQuery, AgentFailure, query_agent
 from backend.app.forecast.service import forecast
@@ -78,7 +80,7 @@ async def health():
 @app.get("/api/registry")
 async def registry():
     return {"sensors": app.state.boiler.registry, "equipment": EQUIPMENT,
-            "hierarchy": {"id": "boiler", "children": [item["id"] for item in EQUIPMENT] + ["generation", "unmapped"]},
+            "hierarchy": {"id": "boiler", "children": [item["id"] for item in EQUIPMENT] + ["main-steam", "generation", "unmapped"]},
             "flows": PROCESS_FLOWS,
             "position_basis": "Logical scene coordinates; not physical instrument positions"}
 
@@ -104,6 +106,32 @@ async def analysis_loop(name: str = "reheater", limit: int = Query(120, ge=1, le
         return loop_analysis(app.state.boiler, name, limit)
     except ValueError as error:
         raise HTTPException(404, str(error)) from error
+
+
+@app.get("/api/history/metadata")
+def source_history_metadata():
+    try:
+        return history_metadata(app.state.boiler.settings)
+    except (OSError, ValueError, TypeError) as error:
+        raise HTTPException(503, "원본 CSV의 기간 정보를 읽을 수 없습니다. 데이터 파일과 일자 형식을 확인하세요.") from error
+
+
+@app.get("/api/history/range")
+def source_history_range(tag: str, start: datetime, end: datetime, limit: int = Query(1000, ge=1, le=1000)):
+    boiler = app.state.boiler
+    if tag not in boiler.registry:
+        raise HTTPException(404, "등록되지 않은 원본 센서입니다.")
+    if (start.utcoffset() is None) != (end.utcoffset() is None):
+        raise HTTPException(422, "시작과 종료 시각의 시간대 형식을 맞춰주세요.")
+    if start > end:
+        raise HTTPException(422, "종료 시각은 시작 시각보다 빠를 수 없습니다.")
+    try:
+        source = history_metadata(boiler.settings)
+        if source['first_time'] and (start.utcoffset() is None) != (source['timezone_offset'] is None):
+            raise HTTPException(422, "조회 시각의 시간대 형식이 CSV 원본과 다릅니다.")
+        return history_range(boiler.settings, tag, boiler.registry[tag]['unit'], start, end, limit)
+    except (OSError, ValueError, TypeError, KeyError) as error:
+        raise HTTPException(503, "원본 CSV를 읽을 수 없습니다. 파일과 센서·일자 형식을 확인하세요.") from error
 
 
 @app.get("/api/analysis/sensor")

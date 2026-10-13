@@ -1,19 +1,32 @@
 import { Component, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { ReactNode } from 'react';
-import { Canvas, useThree } from '@react-three/fiber';
-import { OrthographicCamera, Vector3 } from 'three';
+import type { CSSProperties, ReactNode } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { CatmullRomCurve3, Mesh, OrthographicCamera, Vector3 } from 'three';
 import type { Equipment, Registry, Sensor } from './types';
 import { formatValue, useReading, useTelemetry } from './telemetry';
+import { sensorCategoryName } from './sensor-catalog';
+import { EquipmentSensors } from './EquipmentSensors';
 import './scene-layout.css';
+import './game-scene.css';
 
 type Pan = { x: number; y: number };
 type Point = { tag: string; x: number; y: number; equipmentX: number; equipmentY: number };
 type LabelSlot = { x: number; y: number; width: number; height: number };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const equipmentColors: Record<string, { body: string; dark: string; pale: string; icon: string }> = {
+  feeders: { body: '#f3ba55', dark: '#966126', pale: '#fff1d1', icon: '▰' },
+  furnace: { body: '#f3916d', dark: '#9d4d3c', pale: '#ffe9df', icon: '♨' },
+  superheater: { body: '#53b8e2', dark: '#286982', pale: '#e1f5ff', icon: '≋' },
+  reheater: { body: '#a896e8', dark: '#645096', pale: '#f0eaff', icon: '∞' },
+  economizer: { body: '#70cbb6', dark: '#2e7464', pale: '#e0faf1', icon: '▤' },
+  scr: { body: '#b2c773', dark: '#5f7130', pale: '#f1f6dc', icon: '✧' },
+  stack: { body: '#89aec8', dark: '#446b89', pale: '#e7f2fa', icon: '▥' },
+};
+const equipmentStyle = (id: string) => ({ '--equip-color': equipmentColors[id]?.dark ?? '#355479', '--equip-pale': equipmentColors[id]?.pale ?? '#edf4ff' }) as CSSProperties;
 
 function labelSlots(count: number, width: number, height: number): LabelSlot[] {
   const compact = width < 650, gap = 10, inset = 14;
-  const cardHeight = compact ? 84 : 124;
+  const cardHeight = compact ? 84 : 112;
   const topCount = Math.ceil(count / 2);
   const toolsHeight = width < 420 ? 96 : 64;
   return Array.from({ length: count }, (_, index) => {
@@ -35,60 +48,92 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-const EquipmentMesh = memo(function EquipmentMesh({ item, selected, onSelect }: { item: Equipment; selected: boolean; onSelect: () => void }) {
+const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onSelect, onHover }: { item: Equipment; selected: boolean; hovered: boolean; onSelect: () => void; onHover: (hovered: boolean) => void }) {
   const [x, , z] = item.position;
   const [w, h, d] = item.size;
-  const body = <meshStandardMaterial color={selected ? '#749782' : '#a5b8ae'} roughness={.8} />;
-  const frame = <meshStandardMaterial color={selected ? '#315e49' : '#587568'} roughness={.75} />;
+  const colors = equipmentColors[item.id] ?? equipmentColors.stack;
+  const body = <meshStandardMaterial color={colors.body} roughness={.65} emissive={colors.body} emissiveIntensity={hovered ? .18 : .02} />;
+  const frame = <meshStandardMaterial color={colors.dark} roughness={.65} />;
+  const trim = <meshStandardMaterial color="#fff8e7" roughness={.6} />;
   let shape: ReactNode;
   if (item.id === 'feeders') {
     shape = <>
       <mesh position={[0, h * .67, 0]} rotation={[0, Math.PI / 4, 0]} castShadow><cylinderGeometry args={[w * .63, w * .28, h * .66, 4]} />{body}</mesh>
       <mesh position={[0, h * .22, 0]} castShadow><boxGeometry args={[w * 1.28, h * .28, d * .55]} />{frame}</mesh>
+      {[-.42, .42].map(offset => <mesh key={offset} position={[w * offset, h * .11, d * .32]} rotation={[Math.PI / 2, 0, 0]}><cylinderGeometry args={[.16, .16, .08, 12]} />{trim}</mesh>)}
     </>;
   } else if (item.id === 'furnace') {
     shape = <>
       <mesh position={[0, h * .45, 0]} castShadow><boxGeometry args={[w, h * .86, d]} />{body}</mesh>
       <mesh position={[0, h * .94, 0]} castShadow><boxGeometry args={[w * .77, h * .12, d * .8]} />{frame}</mesh>
-      <mesh position={[0, h * .42, d / 2 + .02]}><boxGeometry args={[w * .6, h * .48, .05]} /><meshStandardMaterial color="#657d70" /></mesh>
+      <mesh position={[0, h * .42, d / 2 + .02]}><boxGeometry args={[w * .6, h * .48, .05]} />{frame}</mesh>
+      {[-.22, 0, .22].map(offset => <mesh key={offset} position={[w * offset, h * .42, d / 2 + .06]}><boxGeometry args={[.1, h * .35, .05]} /><meshStandardMaterial color="#ffd77e" emissive="#ffcc69" emissiveIntensity={.15} /></mesh>)}
+      <mesh position={[w * .29, h * 1.04, -.18]}><cylinderGeometry args={[.18, .18, .42, 12]} />{trim}</mesh>
     </>;
   } else if (item.id === 'superheater') {
     shape = <>
       <mesh position={[0, h / 2, 0]} castShadow><boxGeometry args={[w, h, d * .62]} />{body}</mesh>
       <mesh position={[0, h / 2, d * .34]} scale={[1, 1.3, 1]}><torusGeometry args={[w * .34, .09, 8, 24]} />{frame}</mesh>
       <mesh position={[0, h * .98, 0]}><boxGeometry args={[w * 1.15, .12, d * .9]} />{frame}</mesh>
+      {[-.26, 0, .26].map(offset => <mesh key={offset} position={[w * offset, h * .46, d * .35]}><boxGeometry args={[.11, h * .55, .1]} />{trim}</mesh>)}
     </>;
   } else if (item.id === 'reheater') {
     shape = <>
       <mesh position={[0, h * .5, 0]} rotation={[0, 0, Math.PI / 2]} castShadow><cylinderGeometry args={[h * .43, h * .43, w, 20]} />{body}</mesh>
       <mesh position={[0, h * .5, 0]} rotation={[0, Math.PI / 2, 0]}><torusGeometry args={[h * .44, .09, 8, 24]} />{frame}</mesh>
+      {[-.32, .32].map(offset => <mesh key={offset} position={[w * offset, h * .5, 0]} rotation={[0, Math.PI / 2, 0]}><torusGeometry args={[h * .44, .06, 8, 24]} />{trim}</mesh>)}
+      {[-.3, .3].map(offset => <mesh key={offset} position={[w * offset, .25, 0]}><boxGeometry args={[.2, .5, d * .6]} />{frame}</mesh>)}
     </>;
   } else if (item.id === 'economizer') {
     shape = <>
       <mesh position={[0, h * .38, 0]} castShadow><boxGeometry args={[w, h * .7, d]} />{body}</mesh>
       <mesh position={[0, h * .83, 0]} rotation={[0, 0, -.1]} castShadow><boxGeometry args={[w * 1.1, h * .2, d * 1.05]} />{frame}</mesh>
+      {[-.28, 0, .28].map(offset => <mesh key={offset} position={[w * offset, h * .39, d / 2 + .04]}><boxGeometry args={[.13, h * .43, .12]} />{trim}</mesh>)}
     </>;
   } else if (item.id === 'scr') {
     shape = <>
       <mesh position={[0, h * .61, 0]} castShadow><boxGeometry args={[w, h * .76, d]} />{body}</mesh>
       <mesh position={[0, h * .2, 0]}><boxGeometry args={[w * .56, h * .38, d * .6]} />{frame}</mesh>
-      <mesh position={[0, h * .63, d / 2 + .02]}><boxGeometry args={[w * .74, h * .35, .05]} /><meshStandardMaterial color="#7c9386" wireframe /></mesh>
+      {[-.2, 0, .2].flatMap(dx => [-.15, .15].map(dy => <mesh key={`${dx}-${dy}`} position={[w * dx, h * (.64 + dy), d / 2 + .04]}><boxGeometry args={[w * .13, h * .13, .07]} />{trim}</mesh>))}
     </>;
   } else {
     shape = <>
       <mesh position={[0, h / 2, 0]} castShadow><cylinderGeometry args={[w * .4, w * .58, h, 24]} />{body}</mesh>
       <mesh position={[0, h * .95, 0]}><cylinderGeometry args={[w * .44, w * .44, .16, 24]} />{frame}</mesh>
+      {[.28, .56, .78].map(y => <mesh key={y} position={[0, h * y, 0]}><cylinderGeometry args={[w * (.59 - y * .15), w * (.59 - y * .15), .13, 24]} />{trim}</mesh>)}
     </>;
   }
-  return <group position={[x, 0, z]} onClick={event => { event.stopPropagation(); onSelect(); }}>
+  return <group position={[x, hovered ? .09 : 0, z]} onClick={event => { event.stopPropagation(); onSelect(); }} onPointerOver={event => { event.stopPropagation(); onHover(true); }} onPointerOut={() => onHover(false)}>
     {shape}
-    <mesh position={[0, .04, 0]} receiveShadow><boxGeometry args={[w + .65, .1, d + .65]} /><meshStandardMaterial color={selected ? '#b2cdbb' : '#d5ded5'} /></mesh>
+    <mesh position={[0, .04, 0]} receiveShadow><boxGeometry args={[w + .65, .13, d + .65]} /><meshStandardMaterial color={selected ? '#fff3aa' : '#f3f2de'} /></mesh>
+    {selected && <mesh position={[0, .13, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[Math.max(w, d) * .7, Math.max(w, d) * .7 + .12, 40]} /><meshBasicMaterial color="#eabb39" /></mesh>}
   </group>;
 });
+
+function FlowDecoration({ flow, equipment, index, animate }: { flow: Registry['flows'][number]; equipment: Equipment[]; index: number; animate: boolean }) {
+  const dots = useRef<(Mesh | null)[]>([]);
+  const progress = useRef(0);
+  const curve = useMemo(() => new CatmullRomCurve3(flow.equipment.flatMap(id => {
+    const item = equipment.find(item => item.id === id);
+    return item ? [new Vector3(item.position[0], .24 + index * .12, item.position[2])] : [];
+  }), false, 'catmullrom', .1), [flow, equipment, index]);
+  useFrame((_, delta) => {
+    if (!animate) return;
+    const elapsed = Number.isFinite(delta) ? Math.max(0, Math.min(delta, .05)) : 0;
+    progress.current = (progress.current + elapsed * .04) % 1;
+    dots.current.forEach((dot, i) => dot?.position.copy(curve.getPointAt((progress.current + i / 3) % 1)));
+  });
+  const color = index === 0 ? '#d38542' : '#399bbb';
+  return <group>
+    <mesh><tubeGeometry args={[curve, 80, .075, 8, false]} /><meshStandardMaterial color={color} roughness={.5} /></mesh>
+    {[0, 1, 2].map(i => <mesh key={i} ref={mesh => { dots.current[i] = mesh; }} position={curve.getPointAt(i / 3)}><sphereGeometry args={[.11, 10, 10]} /><meshBasicMaterial color={index === 0 ? '#ffe69b' : '#dafaff'} /></mesh>)}
+  </group>;
+}
 
 function SceneCamera({ zoom, pan, markers, equipment, scale, onProject }: { zoom: number; pan: Pan; markers: Sensor[]; equipment: Equipment[]; scale: { current: number }; onProject: (points: Point[]) => void }) {
   const { camera, size, invalidate } = useThree();
   useLayoutEffect(() => {
+    if (!size.width || !size.height) return;
     const view = camera as OrthographicCamera;
     view.left = -size.width / 2; view.right = size.width / 2;
     view.top = size.height / 2; view.bottom = -size.height / 2;
@@ -124,13 +169,13 @@ function MarkerLabel({ sensor, equipment, index, selected, equipmentSelected, on
   const reading = useReading(sensor.tag);
   const unit = sensor.unit ?? '단위 미확인';
   const state = selected ? '대표 센서 선택됨' : equipmentSelected ? '이 설비의 다른 센서 선택됨' : '대표 센서';
-  return <button className={`scene-marker ${selected ? 'selected' : ''} ${equipmentSelected ? 'equipment-selected' : ''}`} data-testid={`marker-${sensor.tag}`} data-anchor-x={point.x} data-anchor-y={point.y} data-equipment-x={point.equipmentX} data-equipment-y={point.equipmentY} data-offscreen={outside} aria-label={`센서 ${sensor.tag} · ${equipment.name} · ${formatValue(reading)} ${unit} · ${state}${outside ? ' · 설비가 화면 밖에 있음' : ''}`} aria-pressed={selected} onClick={onSelect} title={`${sensor.label}\n${state}${outside ? '\n설비가 화면 밖에 있습니다. 보기 초기화로 돌아올 수 있습니다.' : ''}`} style={{ left: slot.x, top: slot.y, width: slot.width, height: slot.height }}>
+  return <button className={`scene-marker ${selected ? 'selected' : ''} ${equipmentSelected ? 'equipment-selected' : ''}`} data-testid={`marker-${sensor.tag}`} data-anchor-x={point.x} data-anchor-y={point.y} data-equipment-x={point.equipmentX} data-equipment-y={point.equipmentY} data-offscreen={outside} aria-label={`센서 ${sensor.tag} · ${equipment.name} · ${formatValue(reading)} ${unit} · ${state}${outside ? ' · 설비가 화면 밖에 있음' : ''}`} aria-pressed={selected} onClick={onSelect} title={`${sensor.label}\n${state}${outside ? '\n설비가 화면 밖에 있습니다. 보기 초기화로 돌아올 수 있습니다.' : ''}`} style={{ ...equipmentStyle(equipment.id), left: slot.x, top: slot.y, width: slot.width, height: slot.height }}>
     <span className="marker-name"><span>{String(index + 1).padStart(2, '0')}</span>{equipment.name}<i aria-hidden="true">{outside ? '↗' : selected ? '●' : equipmentSelected ? '◐' : ''}</i></span>
     <b>{formatValue(reading)} <em>{unit}</em></b><small>{sensor.label}</small><span className="marker-state">{outside ? '화면 밖 · ' : ''}{state}</span>
   </button>;
 }
 
-export function BoilerViewport({ registry, selected, onSelect, onEquipment }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void; onEquipment: (id: string) => void }) {
+export function BoilerViewport({ registry, selected, onSelect, onEquipment, onInspect, active = true }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void; onEquipment: (id: string) => void; onInspect?: (tag: string) => void; active?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
@@ -139,6 +184,9 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment }: { 
   const [moving, setMoving] = useState(false);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [hovered, setHovered] = useState<string | null>(null);
+  const [popupEquipment, setPopupEquipment] = useState<string | null>(null);
+  const [motionAllowed, setMotionAllowed] = useState(false);
+  const [visible, setVisible] = useState(!document.hidden);
   const cameraScale = useRef(1);
   const space = useRef(false), inside = useRef(false), dragged = useRef(false);
   const drag = useRef<{ id: number; x: number; y: number } | null>(null);
@@ -147,7 +195,21 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment }: { 
     const sensor = registry.sensors[item.primary_tag];
     return sensor?.scene_position ? [sensor] : [];
   }), [registry]);
-  const selectedEquipment = registry.sensors[selected ?? '']?.equipment;
+  const selectedSensor = registry.sensors[selected ?? ''];
+  const selectedEquipment = selectedSensor?.equipment;
+  const selectedReading = useReading(selected ?? '');
+  const popupItem = registry.equipment.find(item => item.id === popupEquipment);
+  const animate = active && visible && motionAllowed;
+  useEffect(() => {
+    setPopupEquipment(registry.equipment.some(item => item.id === selectedEquipment) ? selectedEquipment! : null);
+  }, [selectedEquipment, registry]);
+  useEffect(() => {
+    const preference = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const update = () => setMotionAllowed(!preference.matches);
+    const visibility = () => setVisible(!document.hidden);
+    update(); preference.addEventListener('change', update); document.addEventListener('visibilitychange', visibility);
+    return () => { preference.removeEventListener('change', update); document.removeEventListener('visibilitychange', visibility); };
+  }, []);
   const equipmentCounts = useMemo(() => Object.values(registry.sensors).reduce<Record<string, number>>((counts, sensor) => {
     counts[sensor.equipment] = (counts[sensor.equipment] ?? 0) + 1; return counts;
   }, {}), [registry]);
@@ -194,13 +256,18 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment }: { 
   const fallback = <div className="fallback"><b>3D 화면을 표시할 수 없습니다</b><p>위의 설비 목록에서 모든 그룹을 선택할 수 있습니다.</p><span>{telemetry.status} · Kafka {telemetry.kafka}</span></div>;
   const names = Object.fromEntries(registry.equipment.map(item => [item.id, item.name]));
   const describedEquipment = registry.equipment.find(item => item.id === (hovered ?? selectedEquipment));
-  return <section className="viewport panel" aria-label="보일러 계통도">
-    <div className="panel-heading"><div><span className="eyebrow">PLANT OVERVIEW</span><h2>설비를 눌러 살펴보세요</h2></div><span className="quiet">{registry.equipment.length}개 논리 그룹 · 실제 배치·설비 대수 아님</span></div>
-    <nav className="equipment-nav" aria-label="설비 선택">{registry.equipment.map((item, index) => <button key={item.id} aria-label={`${String(index + 1).padStart(2, '0')} ${item.name}`} aria-pressed={selectedEquipment === item.id} onClick={() => onEquipment(item.id)} onPointerEnter={() => setHovered(item.id)} onPointerLeave={() => setHovered(null)} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} title={item.description}><span>{String(index + 1).padStart(2, '0')}</span><b>{item.name}</b><small>센서 {equipmentCounts[item.id] ?? 0}</small></button>)}</nav>
+  const chooseEquipment = (id: string) => { setPopupEquipment(id); onEquipment(id); };
+  const chooseSensor = (tag: string) => { const id = registry.sensors[tag]?.equipment; if (registry.equipment.some(item => item.id === id)) setPopupEquipment(id); onSelect(tag); };
+  const closeEquipment = () => { const id = popupEquipment; setPopupEquipment(null); document.getElementById(`equipment-${id}`)?.focus({ preventScroll: true }); };
+  return <section className="viewport game-viewport panel" aria-label="보일러 계통도" data-animation={animate ? 'decorative' : 'paused'}>
+    <div className="panel-heading"><div><span className="eyebrow">BOILER WORLD</span><h2>내 보일러 탐색하기</h2></div><span className="quiet">{registry.equipment.length}개 설비 그룹 · 논리 배치</span></div>
+    <nav className="equipment-nav" aria-label="설비 선택">{registry.equipment.map((item, index) => <button key={item.id} id={`equipment-${item.id}`} style={equipmentStyle(item.id)} aria-label={`${String(index + 1).padStart(2, '0')} ${item.name}`} aria-pressed={selectedEquipment === item.id} onClick={() => chooseEquipment(item.id)} onPointerEnter={() => setHovered(item.id)} onPointerLeave={() => setHovered(null)} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)} title={item.description}><span className="equipment-game-icon" aria-hidden="true">{equipmentColors[item.id]?.icon ?? '▣'}</span><b>{item.name}</b><small>센서 {equipmentCounts[item.id] ?? 0}</small></button>)}</nav>
     <p className="equipment-description">{describedEquipment ? <><b>{describedEquipment.name}</b> {describedEquipment.description}</> : '설비를 선택하면 해당 그룹의 센서를 살펴볼 수 있습니다. 이름표는 각 그룹의 대표 센서입니다.'}</p>
-    <p id="scene-help" className="note scene-help"><span><kbd>Space</kbd> + 드래그 이동 · 휠 확대·축소</span><span>설비 버튼은 Tab · Enter로 선택</span></p>
+    <div className="scene-selection" data-testid="scene-selected">{selectedSensor ? <><span className="scene-selection-path">{sensorCategoryName(selectedSensor, registry)}</span><strong>{selectedSensor.label}</strong><b>{formatValue(selectedReading)} <small>{selectedSensor.unit ?? '단위 미확인'}</small></b><span className="scene-selection-time">원본 시각 {telemetry.current?.source_time ?? '수신 대기'}</span>{onInspect && !popupItem && <button onClick={() => onInspect(selectedSensor.tag)}>자세히 →</button>}</> : <span>설비를 누르면 현재값과 센서 목록을 확인할 수 있습니다.</span>}</div>
+    <p id="scene-help" className="note scene-help"><span><kbd>Space</kbd> + 드래그 이동 · 휠 확대·축소</span><span>색상은 설비 구분 · 움직임은 흐름 이해용 장식</span></p>
+    <div className={`game-scene-shell ${popupItem ? 'has-equipment-popup' : ''}`}>
     <div className={`scene ${dimensions.width < 650 ? 'compact-markers' : ''} ${moving ? 'panning' : ''}`} ref={box} tabIndex={0} aria-label="계통도 화면" aria-describedby="scene-help"
-      onPointerEnter={() => { inside.current = true; }} onPointerLeave={() => { inside.current = false; }}
+      onPointerEnter={() => { inside.current = true; }} onPointerLeave={() => { inside.current = false; setHovered(null); }}
       onPointerDownCapture={event => {
         dragged.current = false;
         if (!space.current || event.button !== 0 || (event.target as HTMLElement).closest('.scene-tools')) return;
@@ -218,13 +285,15 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment }: { 
       onPointerUpCapture={event => { if (drag.current) { event.stopPropagation(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); drag.current = null; } }}
       onPointerCancel={stop} onLostPointerCapture={() => { drag.current = null; }}
       onClickCapture={event => { if (space.current || dragged.current) { event.stopPropagation(); event.preventDefault(); dragged.current = false; } }}>
-      {lost ? fallback : <SceneBoundary fallback={fallback}><Canvas orthographic camera={{ position: [14, 12, 17], near: .1, far: 100 }} shadows frameloop="demand" fallback={fallback} onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); setLost(true); }); }}>
+      {lost ? fallback : <SceneBoundary fallback={fallback}><Canvas orthographic camera={{ position: [14, 12, 17], near: .1, far: 100 }} shadows frameloop={animate ? 'always' : 'demand'} fallback={fallback} onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); setLost(true); }); }}>
         <SceneCamera zoom={zoom} pan={pan} markers={markers} equipment={registry.equipment} scale={cameraScale} onProject={setPoints} />
-        <color attach="background" args={['#eef2ec']} /><ambientLight intensity={1.6} /><directionalLight position={[5, 12, 6]} intensity={2} castShadow />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.04, 0]} receiveShadow><planeGeometry args={[36, 32]} /><meshStandardMaterial color="#edf1e9" /></mesh>
-        <gridHelper args={[32, 24, '#d4ded1', '#e0e7dc']} />
-        {registry.equipment.map(item => <EquipmentMesh key={item.id} item={item} selected={selectedEquipment === item.id} onSelect={() => onEquipment(item.id)} />)}
-        {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); onSelect(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? '#b56519' : '#185d48'} /></mesh>)}
+        <color attach="background" args={['#e4f3fa']} /><ambientLight intensity={1.8} /><directionalLight position={[5, 12, 6]} intensity={2.2} castShadow />
+        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.07, 0]} receiveShadow><planeGeometry args={[30, 28]} /><meshStandardMaterial color="#c9dfb1" /></mesh>
+        <mesh position={[0, -.06, .5]} receiveShadow><boxGeometry args={[22, .12, 20]} /><meshStandardMaterial color="#dfe9cb" /></mesh>
+        <gridHelper position={[0, .01, 0]} args={[24, 12, '#acbd99', '#c1d0b0']} />
+        {registry.flows.map((flow, index) => <FlowDecoration key={flow.id} flow={flow} equipment={registry.equipment} index={index} animate={animate} />)}
+        {registry.equipment.map(item => <EquipmentMesh key={item.id} item={item} selected={selectedEquipment === item.id} hovered={hovered === item.id} onSelect={() => chooseEquipment(item.id)} onHover={value => setHovered(value ? item.id : null)} />)}
+        {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); chooseSensor(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? '#d39b21' : equipmentColors[sensor.equipment]?.dark ?? '#355479'} /></mesh>)}
       </Canvas></SceneBoundary>}
       {!lost && dimensions.width > 0 && <div className="marker-layer">
         <svg className="marker-leaders" width={dimensions.width} height={dimensions.height} aria-hidden="true">{points.map((point, index) => {
@@ -237,7 +306,7 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment }: { 
         {points.map((point, index) => {
           const sensor = registry.sensors[point.tag], slot = slots[index];
           if (!slot) return null;
-          return <MarkerLabel key={point.tag} sensor={sensor} equipment={registry.equipment.find(item => item.id === sensor.equipment)!} index={index} selected={selected === point.tag} equipmentSelected={selectedEquipment === sensor.equipment} onSelect={() => onSelect(point.tag)} point={point} slot={slot} outside={point.x < 0 || point.x > dimensions.width || point.y < 0 || point.y > dimensions.height} />;
+          return <MarkerLabel key={point.tag} sensor={sensor} equipment={registry.equipment.find(item => item.id === sensor.equipment)!} index={index} selected={selected === point.tag} equipmentSelected={selectedEquipment === sensor.equipment} onSelect={() => chooseSensor(point.tag)} point={point} slot={slot} outside={point.x < 0 || point.x > dimensions.width || point.y < 0 || point.y > dimensions.height} />;
         })}
       </div>}
       <div className="scene-tools" aria-label="계통도 보기 조절">
@@ -246,6 +315,8 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment }: { 
         <button disabled={pan.y >= 4} aria-label="위로 이동" onClick={() => setPan(value => ({ ...value, y: clamp(value.y + .5, -4, 4) }))}>↑</button><button disabled={pan.y <= -4} aria-label="아래로 이동" onClick={() => setPan(value => ({ ...value, y: clamp(value.y - .5, -4, 4) }))}>↓</button><button onClick={reset}>보기 초기화</button>
       </div>
       <span className="scene-mode" role="status">{moving ? '이동 모드 · 드래그 / 휠 확대·축소' : ''}</span>
+    </div>
+    {popupItem && <EquipmentSensors item={popupItem} registry={registry} selected={selected} onSelect={chooseSensor} onClose={closeEquipment} onInspect={onInspect} />}
     </div>
     <div className="scene-flow-caption" aria-label="논리 계통 흐름">{registry.flows.map(flow => <p key={flow.id}><b>{flow.label}</b><span>{flow.equipment.map(id => names[id] ?? id).join(' → ')}</span></p>)}</div>
   </section>;

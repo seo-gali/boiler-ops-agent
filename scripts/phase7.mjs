@@ -83,8 +83,8 @@ export async function validateFailures({ page, context, env, out, root, python, 
     const tag = equipment.primary_tag;
     if (!tag) continue;
     await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
-    await page.getByLabel('설비 분류', { exact: true }).selectOption(registry.sensors[tag].equipment);
-    await page.getByLabel('선택 센서', { exact: true }).selectOption(tag);
+    await page.locator('#sensor-group').selectOption(registry.sensors[tag].equipment);
+    await page.getByTestId(`sensor-option-${tag}`).click();
     const value = await page.getByTestId('inspector-value').textContent();
     assert.ok((await page.getByTestId(`marker-${tag}`).textContent()).includes(value));
     assert.equal(await page.getByTestId('inspector-tag').textContent(), tag);
@@ -97,8 +97,9 @@ export async function validateFailures({ page, context, env, out, root, python, 
     const gl = canvas.getContext('webgl2');
     gl.getExtension('WEBGL_lose_context').loseContext();
   });
-  await loss.getByText('3D VIEW UNAVAILABLE').waitFor();
+  await loss.getByText('3D 화면을 표시할 수 없습니다').waitFor();
   await loss.getByRole('button', { name: '02 화로', exact: true }).click();
+  await loss.getByTestId('equipment-sensors').getByRole('button', { name: '선택 센서 자세히 보기', exact: false }).click();
   await loss.getByTestId('inspector-tag').waitFor();
   await loss.close();
   pass('Corrupt Registry/Scene positions reject; all equipment markers match Inspector; actual WebGL loss falls back');

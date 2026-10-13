@@ -80,6 +80,8 @@ export async function reviewApplication(page, context, out = output) {
   assert.equal(await page.locator('#main').evaluate(element => element === document.activeElement), true);
   await tabTo(page, page.getByRole('button', { name: '02 화로', exact: true }));
   await page.keyboard.press('Enter');
+  await tabTo(page, page.getByTestId('equipment-sensors').getByRole('button', { name: '선택 센서 자세히 보기', exact: false }));
+  await page.keyboard.press('Enter');
   await page.getByTestId('inspector-tag').waitFor();
   await inspect(page, 'app-desktop', out);
   await page.screenshot({ path: resolve(out, 'app-desktop.png'), fullPage: true });
@@ -97,15 +99,16 @@ export async function reviewApplication(page, context, out = output) {
   assert.equal(await page.locator('#menu-toggle').getAttribute('aria-expanded'), 'false');
   assert.equal(await page.locator('#menu-toggle').evaluate(element => element === document.activeElement), true);
   await page.keyboard.press('Enter');
-  await tabTo(page, page.getByRole('link', { name: '운전 분석', exact: true }));
+  await tabTo(page, page.getByRole('link', { name: '기간 조회', exact: true }));
   await page.keyboard.press('Enter');
   assert.equal(await page.locator('#analysis').evaluate(element => element === document.activeElement), true);
   assert.equal(await page.locator('#menu-toggle').getAttribute('aria-expanded'), 'false');
-  const select = page.getByRole('combobox', { name: '분석 Loop' });
+  const select = page.getByRole('combobox', { name: '조회 센서' });
+  const lastTag = await select.locator('option').last().getAttribute('value');
   await tabTo(page, select);
   await page.keyboard.press('End');
   await page.keyboard.press('Enter');
-  assert.equal(await select.inputValue(), 'generation');
+  assert.equal(await select.inputValue(), lastTag);
   await page.screenshot({ path: resolve(out, 'app-mobile.png'), fullPage: true });
   await page.addStyleTag({ content: '* { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; } p { margin-bottom: 2em !important; }' });
   await page.setViewportSize({ width: 320, height: 900 });
@@ -116,7 +119,7 @@ export async function reviewApplication(page, context, out = output) {
   await missing.getByRole('heading', { name: '페이지를 찾을 수 없습니다' }).waitFor();
   await inspect(missing, 'app-404', out);
   await missing.getByRole('link', { name: '운전 현황으로 이동' }).click();
-  await missing.getByRole('heading', { name: '운전 현황 Historical replay' }).waitFor();
+  await missing.getByRole('heading', { name: '공장 모니터링 과거 데이터 재생' }).waitFor();
   await missing.close();
   await page.setViewportSize({ width: 1500, height: 1100 });
   await page.goto(home);
@@ -127,7 +130,7 @@ async function reviewDocumentation() {
   mkdirSync(output, { recursive: true });
   const publicFiles = new Map([
     ['/docs/index.html', ['docs/index.html', 'text/html; charset=utf-8']],
-    ...['dashboard', 'login', 'simulator', 'agent-answer', 'workspace', 'ai-drawer', 'simulator-drawer', 'audit-drawer', 'workspace-mobile'].map(name => [`/docs/images/${name}.jpg`, [`docs/images/${name}.jpg`, 'image/jpeg']]),
+    ...['dashboard', 'login', 'simulator', 'agent-answer', 'workspace', 'ai-drawer', 'simulator-drawer', 'audit-drawer', 'workspace-mobile', 'game-workspace', 'game-ai-drawer', 'game-simulator-drawer', 'game-audit-drawer', 'game-workspace-mobile', 'chat-history', 'equipment-sensors', 'sensor-catalog', 'period-history'].map(name => [`/docs/images/${name}.jpg`, [`docs/images/${name}.jpg`, 'image/jpeg']]),
     ['/docs/fonts/pretendard.css', ['docs/fonts/pretendard.css', 'text/css']],
     ['/docs/fonts/PretendardVariable.woff2', ['docs/fonts/PretendardVariable.woff2', 'font/woff2']],
     ['/docs/404.html', ['docs/404.html', 'text/html; charset=utf-8']],
@@ -191,11 +194,20 @@ async function reviewDocumentation() {
     await page.locator('button[data-doc="docs/results/phase7-workspace.md"]').first().click();
     await page.getByRole('dialog').getByRole('heading', { name: '단위의 출처와 데이터 경계', exact: true }).waitFor();
     assert.ok((await page.getByRole('dialog').innerText()).includes('118'));
-    await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => image.decode())));
+    await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => { image.loading = 'eager'; return image.decode(); })));
     await inspect(page, 'docs-workspace-review-320', output);
     assert.equal(await page.getByRole('dialog').evaluate(element => element.scrollWidth > element.clientWidth + 1), false);
     await page.keyboard.press('Escape');
     results.checks.push('Workspace result, source units and screenshots open in the same page at 320px');
+    await page.locator('button[data-doc="docs/results/phase7-game-chat-history.md"]').first().click();
+    await page.getByRole('dialog').getByRole('heading', { name: '이번 검증 기록', exact: true }).waitFor();
+    assert.ok((await page.getByRole('dialog').innerText()).includes('50,400'));
+    await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => { image.loading = 'eager'; return image.decode(); })));
+    await inspect(page, 'docs-game-chat-history-320', output);
+    assert.equal(await page.getByRole('dialog').evaluate(element => element.scrollWidth > element.clientWidth + 1), false);
+    await page.screenshot({ path: resolve(output, 'docs-game-chat-history-320.png'), fullPage: true });
+    await page.keyboard.press('Escape');
+    results.checks.push('Current game, chat and period-history result and screenshots open in the same page at 320px');
     assert.deepEqual(downloads, []);
     results.checks.push('Rendered README and audit tables; source preview; Escape closes dialogs; no downloads');
     await page.reload();
