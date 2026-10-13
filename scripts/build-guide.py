@@ -15,6 +15,7 @@ FILES = [
     'docs/instructions/phase7-agent-answers.md', 'docs/results/phase7-agent-answers.md',
     'docs/instructions/phase7-workspace.md', 'docs/results/phase7-workspace.md',
     'docs/results/phase7-game-chat-history.md',
+    'docs/results/phase7-select-chat-compare.md',
     'docs/fonts/README.md',
     'backend/app/main.py', 'backend/app/security.py', 'backend/app/replay/producer.py',
     'backend/app/domain/state.py', 'backend/app/domain/history.py', 'backend/app/streaming/consumer.py',
@@ -25,10 +26,11 @@ FILES = [
     'frontend/src/telemetry.ts', 'frontend/src/types.ts', 'frontend/src/App.tsx', 'frontend/src/AgentPanel.tsx',
     'frontend/src/SimulatorPanel.tsx', 'frontend/src/ForecastPanel.tsx', 'frontend/src/OperationsAnalysis.tsx',
     'frontend/src/BoilerScene.tsx', 'frontend/src/WorkspacePanel.tsx',
-    'frontend/src/SensorPicker.tsx', 'frontend/src/SensorInspector.tsx', 'frontend/src/RecordsPanel.tsx',
+    'frontend/src/SensorPicker.tsx', 'frontend/src/SensorInspector.tsx', 'frontend/src/SensorTrend.tsx', 'frontend/src/RecordsPanel.tsx',
     'frontend/src/EquipmentSensors.tsx', 'frontend/src/sensor-catalog.ts',
     'frontend/src/sensor-catalog.css', 'frontend/src/equipment-sensors.css',
     'frontend/src/game-scene.css', 'frontend/src/chat.css', 'frontend/src/history.css',
+    'frontend/src/sensor-trend.css', 'frontend/src/workspace.css',
     'scripts/import-sensor-definitions.py', 'scripts/dataset_path.py',
 ]
 

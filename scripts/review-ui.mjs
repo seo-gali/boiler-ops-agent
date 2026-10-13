@@ -109,6 +109,10 @@ export async function reviewApplication(page, context, out = output) {
   await page.keyboard.press('End');
   await page.keyboard.press('Enter');
   assert.equal(await select.inputValue(), lastTag);
+  await tabTo(page, page.getByRole('button', { name: '센서 추가', exact: false }));
+  await page.keyboard.press('Enter');
+  assert.equal(await page.getByTestId('history-selected-sensors').locator('li').count(), 2);
+  await inspect(page, 'app-history-selection-375', out);
   await page.screenshot({ path: resolve(out, 'app-mobile.png'), fullPage: true });
   await page.addStyleTag({ content: '* { line-height: 1.5 !important; letter-spacing: .12em !important; word-spacing: .16em !important; } p { margin-bottom: 2em !important; }' });
   await page.setViewportSize({ width: 320, height: 900 });
@@ -123,14 +127,14 @@ export async function reviewApplication(page, context, out = output) {
   await missing.close();
   await page.setViewportSize({ width: 1500, height: 1100 });
   await page.goto(home);
-  writeFileSync(resolve(out, 'app-result.json'), JSON.stringify({ passed: true, keyboard: ['skip link', 'equipment selection', 'mobile menu', 'Escape focus return', 'section navigation', 'analysis select'], widths: [320, 375, 768, 1280], manualScreenReader: 'Not run; Chromium accessibility trees captured' }, null, 2));
+  writeFileSync(resolve(out, 'app-result.json'), JSON.stringify({ passed: true, keyboard: ['skip link', 'equipment selection', 'mobile menu', 'Escape focus return', 'section navigation', 'history sensor selection and add'], widths: [320, 375, 768, 1280], manualScreenReader: 'Not run; Chromium accessibility trees captured' }, null, 2));
 }
 
 async function reviewDocumentation() {
   mkdirSync(output, { recursive: true });
   const publicFiles = new Map([
     ['/docs/index.html', ['docs/index.html', 'text/html; charset=utf-8']],
-    ...['dashboard', 'login', 'simulator', 'agent-answer', 'workspace', 'ai-drawer', 'simulator-drawer', 'audit-drawer', 'workspace-mobile', 'game-workspace', 'game-ai-drawer', 'game-simulator-drawer', 'game-audit-drawer', 'game-workspace-mobile', 'chat-history', 'equipment-sensors', 'sensor-catalog', 'period-history'].map(name => [`/docs/images/${name}.jpg`, [`docs/images/${name}.jpg`, 'image/jpeg']]),
+    ...['dashboard', 'login', 'simulator', 'agent-answer', 'workspace', 'ai-drawer', 'simulator-drawer', 'audit-drawer', 'workspace-mobile', 'game-workspace', 'game-ai-drawer', 'game-simulator-drawer', 'game-audit-drawer', 'game-workspace-mobile', 'chat-history', 'equipment-sensors', 'sensor-catalog', 'period-history', 'select-workspace', 'select-equipment-sensors', 'select-workspace-mobile', 'fixed-chat', 'compare-history', 'approval-workspace', 'approval-audit', 'fixed-chat-mobile'].map(name => [`/docs/images/${name}.jpg`, [`docs/images/${name}.jpg`, 'image/jpeg']]),
     ['/docs/fonts/pretendard.css', ['docs/fonts/pretendard.css', 'text/css']],
     ['/docs/fonts/PretendardVariable.woff2', ['docs/fonts/PretendardVariable.woff2', 'font/woff2']],
     ['/docs/404.html', ['docs/404.html', 'text/html; charset=utf-8']],
@@ -208,6 +212,15 @@ async function reviewDocumentation() {
     await page.screenshot({ path: resolve(output, 'docs-game-chat-history-320.png'), fullPage: true });
     await page.keyboard.press('Escape');
     results.checks.push('Current game, chat and period-history result and screenshots open in the same page at 320px');
+    await page.locator('button[data-doc="docs/results/phase7-select-chat-compare.md"]').first().click();
+    await page.getByRole('dialog').getByRole('heading', { name: '이번 검증 기록', exact: true }).waitFor();
+    assert.ok((await page.getByRole('dialog').innerText()).includes('10,845'));
+    await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => { image.loading = 'eager'; return image.decode(); })));
+    await inspect(page, 'docs-select-chat-compare-320', output);
+    assert.equal(await page.getByRole('dialog').evaluate(element => element.scrollWidth > element.clientWidth + 1), false);
+    await page.screenshot({ path: resolve(output, 'docs-select-chat-compare-320.png'), fullPage: true });
+    await page.keyboard.press('Escape');
+    results.checks.push('Select, fixed chat, multiple-sensor comparison and feeder audit result opens with all new captures at 320px');
     assert.deepEqual(downloads, []);
     results.checks.push('Rendered README and audit tables; source preview; Escape closes dialogs; no downloads');
     await page.reload();

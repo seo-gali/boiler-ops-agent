@@ -79,12 +79,14 @@ export async function validateFailures({ page, context, env, out, root, python, 
     await corrupted.close();
   }
   const registry = await json('/api/registry');
+  await page.getByRole('link', { name: '공장 모니터링', exact: true }).click();
+  if (!await page.locator('#workspace-panel').isVisible()) await page.locator('#open-agent').click();
   for (const equipment of registry.equipment) {
     const tag = equipment.primary_tag;
     if (!tag) continue;
     await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
     await page.locator('#sensor-group').selectOption(registry.sensors[tag].equipment);
-    await page.getByTestId(`sensor-option-${tag}`).click();
+    await page.locator('#sensor-select').selectOption(tag);
     const value = await page.getByTestId('inspector-value').textContent();
     assert.ok((await page.getByTestId(`marker-${tag}`).textContent()).includes(value));
     assert.equal(await page.getByTestId('inspector-tag').textContent(), tag);

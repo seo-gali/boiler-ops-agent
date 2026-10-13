@@ -7,6 +7,7 @@ button, select, summary, .page-nav a, footer a { min-height: 44px; }
 button { touch-action: manipulation; }
 button:disabled { cursor: not-allowed; }
 :focus-visible { outline: 3px solid #785018; outline-offset: 3px; }
+section[tabindex="-1"]:focus-visible { outline: none; }
 input, textarea, select { max-width: 100%; border-color: #788579 !important; }
 input, textarea { font-size: 16px !important; }
 summary { cursor: pointer; padding: 10px 0; }

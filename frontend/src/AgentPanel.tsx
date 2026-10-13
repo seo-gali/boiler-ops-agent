@@ -68,7 +68,7 @@ export function AgentPanel({ equipment, tag, onTrace, onPending, onDraftChange, 
   useEffect(() => {
     const element = transcript.current;
     if (element) element.scrollTop = element.scrollHeight;
-  }, [turns.length, latest?.status]);
+  }, [turns.length, latest?.status, moreSuggestions]);
   const suggestions = querySuggestions(equipment, tag);
   const canAsk = user.role === 'operator' && Boolean(equipment && tag) && !pending && Boolean(question.trim());
   const statusText = latest?.status === 'answered' ? `${latest.elapsed}초 만에 답변을 받았습니다.` : latest?.status === 'cancelled' ? '답변 기다리기를 취소했습니다. 지난 질문과 답변은 남아 있습니다.' : latest?.status === 'failed' ? '답변을 받지 못했습니다. 해당 메시지에서 다시 조회할 수 있습니다.' : '';
@@ -134,7 +134,7 @@ export function AgentPanel({ equipment, tag, onTrace, onPending, onDraftChange, 
       <ol className="chat-history" ref={transcript} aria-label="AI 대화 기록">
         {!turns.length && <li className="chat-empty"><span aria-hidden="true">✦</span><p>무엇이 궁금한가요?</p><small>직접 질문하거나 아래 예시를 골라보세요.</small></li>}
         {turns.map(turn => <li className="chat-turn" key={turn.id} data-testid="chat-turn" data-status={turn.status}>
-          <div className="chat-message chat-user"><span className="chat-speaker">나</span><p>{turn.question}</p><div className="chat-meta"><span>{turn.tag}</span><time dateTime={turn.requestedAt} title="브라우저에서 조회를 요청한 시각">조회 요청 {requestTime(turn.requestedAt)}</time></div></div>
+          <div className="chat-message chat-user"><span className="chat-speaker">나</span><p>{turn.question}</p><div className="chat-meta"><span>{turn.tag}</span><time dateTime={turn.requestedAt}>조회 요청 {requestTime(turn.requestedAt)}</time></div></div>
           <div className="chat-message chat-assistant"><span className="chat-speaker">AI</span>
             {turn.status === 'pending' && <div className="agent-waiting" data-testid="agent-waiting"><p>답변을 기다리고 있습니다<span className="chat-loading" aria-hidden="true">…</span></p><p className="chat-meta"><span data-testid="agent-elapsed" aria-live="off">{elapsedSeconds}초 경과</span> · 최대 6분 30초</p><p className="note">로컬 모델은 기기에 따라 몇 분 걸릴 수 있습니다.</p><button className="chat-cancel" onClick={() => request.current?.abort('cancelled')}>기다리기 취소</button></div>}
             {turn.status === 'answered' && turn.answer && <div data-testid="agent-answer"><p className="agent-answer-text">{turn.answer.answer}</p><p className="agent-explanation">{turn.answer.explanation}</p>{turn.answer.limitations && <p className="note">{turn.answer.limitations}</p>}<TraceDetails traceId={turn.answer.trace_id} /><div className="chat-meta"><span>{turn.elapsed}초 · {turn.answer.model}</span><span>{turn.tag}</span></div></div>}
@@ -143,15 +143,17 @@ export function AgentPanel({ equipment, tag, onTrace, onPending, onDraftChange, 
             {(turn.status === 'failed' || turn.status === 'cancelled') && <><button className="chat-retry" disabled={pending || user.role !== 'operator'} onClick={() => void ask(turn.question, turn.equipment, turn.tag, false)}>다시 조회</button><p className="chat-meta">{turn.elapsed}초 대기 · {turn.tag}</p></>}
           </div>
         </li>)}
+        <li className="chat-suggestions"><p className="chat-status" role="status" data-testid="agent-status">{pending ? '답변을 기다리는 중…' : statusText}</p>
+          <div className="question-suggestions" aria-label="질문 예시">{suggestions.slice(0, turns.length ? 2 : 4).map(text => <button key={text} disabled={!tag} onClick={() => fillQuestion(text)}>{text}</button>)}</div>
+          <details className="chat-more" open={moreSuggestions} onToggle={event => setMoreSuggestions(event.currentTarget.open)}><summary>질문 예시 더 보기</summary><div className="question-suggestions">{suggestions.slice(turns.length ? 2 : 4).map(text => <button key={text} disabled={!tag} onClick={() => fillQuestion(text)}>{text}</button>)}</div></details>
+        </li>
       </ol>
-      <p className="chat-status" role="status" data-testid="agent-status">{pending ? '답변을 기다리는 중…' : statusText}</p>
-      <div className="chat-composer">
-        <div className="question-suggestions" aria-label="질문 예시">{suggestions.slice(0, 4).map(text => <button key={text} disabled={!tag} onClick={() => fillQuestion(text)}>{text}</button>)}</div>
-        <details className="chat-more" open={moreSuggestions} onToggle={event => setMoreSuggestions(event.currentTarget.open)}><summary>질문 예시 더 보기</summary><div className="question-suggestions">{suggestions.slice(4).map(text => <button key={text} disabled={!tag} onClick={() => fillQuestion(text)}>{text}</button>)}</div></details>
-        <label htmlFor="agent-question">질문</label>
-        <textarea id="agent-question" spellCheck={false} maxLength={1000} rows={3} placeholder="이 센서에 대해 궁금한 점을 입력하세요." value={question} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && canAsk && equipment && tag) { event.preventDefault(); void ask(question, equipment, tag, true); } }} />
-        <div className="agent-actions"><span className="chat-input-hint">Ctrl + Enter로 보내기</span><button className="primary-button" aria-label={pending ? '답변 기다리는 중…' : 'Agent 조회'} disabled={!canAsk} onClick={() => { if (canAsk && equipment && tag) void ask(question, equipment, tag, true); }}>{pending ? '답변 기다리는 중…' : 'Agent 조회'}<span aria-hidden="true"> ↑</span></button></div>
-      </div>
+      <form className="chat-composer" onSubmit={event => { event.preventDefault(); if (canAsk && equipment && tag) void ask(question, equipment, tag, true); }}>
+        <label className="sr-only" htmlFor="agent-question">질문</label>
+        <div className="chat-compose-row"><textarea id="agent-question" spellCheck={false} maxLength={1000} rows={2} placeholder="메시지를 입력하세요" aria-describedby="chat-input-hint" value={question} onChange={event => setQuestion(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); if (canAsk && equipment && tag) void ask(question, equipment, tag, true); } }} />
+        <button type="submit" className="primary-button chat-send" aria-label={pending ? '답변 기다리는 중…' : '질문 보내기'} disabled={!canAsk}><span aria-hidden="true">↑</span></button></div>
+        <p className="chat-input-hint" id="chat-input-hint">Enter 전송 · Shift + Enter 줄바꿈</p>
+      </form>
     </div>
   </section>;
 }

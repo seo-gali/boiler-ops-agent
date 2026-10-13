@@ -196,7 +196,7 @@ try {
     await page.getByRole('button', { name: '01 급탄기', exact: true }).click();
     await page.getByTestId('equipment-sensors').getByRole('button', { name: '선택 센서 자세히 보기', exact: false }).click();
     assert.equal(await page.getByTestId('inspector-tag').textContent(), tag);
-    await page.getByRole('img', { name: `${tag} 최근 추이` }).waitFor();
+    await page.getByRole('img', { name: `${tag} 최근 2분 추이` }).waitFor();
     const history = await (await apiFetch(`${base}/api/sensors/history?tag=${encodeURIComponent(tag)}`)).json();
     assert.equal(history.points.length, 16);
     assert.equal(history.points[15].value, Number(expected.measurements[tag]));
@@ -216,7 +216,10 @@ try {
     assert.ok(reheater.points.every(point => point.actual_minus_target === null));
     await page.getByRole('link', { name: '기간 조회', exact: true }).click();
     await page.getByTestId('history-availability').waitFor();
+    await page.getByTestId('history-selected-sensors').getByRole('button').click();
+    await page.getByLabel('조회 설비', { exact: true }).selectOption('generation');
     await page.getByLabel('조회 센서', { exact: true }).selectOption('실제 출력값');
+    await page.getByRole('button', { name: '센서 추가', exact: false }).click();
     await page.getByLabel('시작 시각', { exact: true }).fill(profile.first_rows[0].source_time.replace(' ', 'T'));
     await page.getByLabel('종료 시각', { exact: true }).fill(expected.source_time.replace(' ', 'T'));
     await page.getByRole('button', { name: '기간 조회', exact: true }).click();
@@ -224,8 +227,9 @@ try {
     assert.ok((await page.getByTestId('history-sampling').textContent()).includes('원본 16개'));
     await page.getByRole('link', { name: '공장 모니터링', exact: true }).click();
     await page.getByTestId('kpi-실제 출력값').click();
+    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
     await page.locator('#sensor-group').selectOption('feeders');
-    await page.getByTestId('sensor-option-급탄기 A 속도 평균값 ').click();
+    await page.locator('#sensor-select').selectOption('급탄기 A 속도 평균값 ');
     writeFileSync(resolve(out, 'analysis.json'), JSON.stringify({ generation, reheater }, null, 2));
     pass('Aligned loop actual/target/controls, missing target and prior-only distribution');
   }
@@ -233,7 +237,7 @@ try {
     const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
     await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
     await page.getByLabel('질문', { exact: true }).fill('선택 설비의 현재값과 변화 추이를 근거와 함께 설명해줘.');
-    await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
+    await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
     const response = await responsePromise;
     const answer = await response.json();
     assert.equal(response.status(), 200, JSON.stringify(answer));
@@ -263,26 +267,28 @@ try {
     assert.ok(Date.parse(forecast.source_time) > Date.parse(forecast.validation_cutoff));
     assert.ok(forecastModel.test.naive.samples > 7000);
     assert.ok(Number.isFinite(forecastModel.test.linear_ar.rmse));
-    await page.getByRole('link', { name: '5분 예측', exact: true }).click();
+    await page.getByRole('link', { name: '공장 모니터링', exact: true }).click();
     await page.getByTestId('forecast-value').waitFor();
     assert.equal(await page.getByTestId('forecast-value').textContent(), forecast.prediction.toFixed(2));
     const tool = await (await apiFetch(`${base}/api/tools/get_temperature_forecast?equipment=reheater`)).json();
     assert.equal(tool.prediction, forecast.prediction);
     await page.getByRole('link', { name: '공장 모니터링', exact: true }).click();
     await page.getByTestId('kpi-실제 출력값').click();
+    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
     await page.locator('#sensor-group').selectOption(sceneRegistry.sensors[forecastModel.target].equipment);
-    await page.getByTestId(`sensor-option-${forecastModel.target}`).click();
+    await page.locator('#sensor-select').selectOption(forecastModel.target);
     await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
     await page.getByLabel('질문', { exact: true }).fill('Use get_temperature_forecast to report the 5-minute predicted temperature. Cite prediction evidence.');
     const agentResponse = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
     await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
-    await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
+    await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
     const agent = await agentResponse;
     const advisory = await agent.json();
     assert.equal(agent.status(), 200, JSON.stringify(advisory));
     const advisoryTrace = await (await apiFetch(`${base}/api/agent/traces/${advisory.trace_id}`)).json();
     assert.ok(advisoryTrace.calls.some(call => call.tool === 'get_temperature_forecast'));
     assert.ok(advisory.evidence.some(evidence => evidence.field === 'prediction' && evidence.value === forecast.prediction));
+    await poll(async () => (await page.getByTestId('agent-answer').last().innerText()).includes(advisory.answer), 'forecast answer displayed');
     writeFileSync(resolve(out, 'advisory-agent.json'), JSON.stringify({ advisory, advisoryTrace }, null, 2));
     writeFileSync(resolve(out, 'forecast.json'), JSON.stringify({ model: forecastModel, forecast }, null, 2));
     pass('Chronological train/validation/test, baseline MAE/RMSE, held-out forecast UI and Agent read tool');
@@ -290,7 +296,7 @@ try {
   if (Number(phase.replace('phase', '')) >= 6) {
     const stateBefore = await (await apiFetch(`${base}/api/simulator`)).json();
     const proposalResponse = page.waitForResponse(response => response.url().endsWith('/api/simulator/proposals'), { timeout: 180000 });
-    await page.getByText('추가 기능 · 변경 승인 연습', { exact: true }).click();
+    await page.getByRole('link', { name: '승인 연습', exact: true }).click();
     await page.getByLabel('Simulator 요청', { exact: true }).fill('Increase the local demo parameter by one synthetic step.');
     await page.getByRole('button', { name: 'Agent Simulator 제안 생성', exact: true }).click();
     const created = await proposalResponse;
@@ -308,14 +314,20 @@ try {
     const headers = { 'Content-Type': 'application/json' };
     assert.equal((await apiFetch(decisionUrl, { method: 'POST', headers, body: JSON.stringify(decision) })).status, 409);
     const freshResponse = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
-    await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
+    await page.getByRole('link', { name: '공장 모니터링', exact: true }).click();
+    await page.getByTestId('kpi-실제 출력값').click();
+    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
+    await page.locator('#sensor-group').selectOption(sceneRegistry.sensors[forecastModel.target].equipment);
+    await page.locator('#sensor-select').selectOption(forecastModel.target);
+    await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
     await page.getByLabel('질문', { exact: true }).fill('현재 관측값과 최근 변화 추이를 근거와 함께 설명해 주세요.');
-    await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
-    assert.equal((await freshResponse).status(), 200);
+    await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
+    const fresh = await freshResponse;
+    assert.equal(fresh.status(), 200);
+    const freshAnswer = await fresh.json();
+    await poll(async () => (await page.getByTestId('agent-answer').last().innerText()).includes(freshAnswer.answer), 'fresh proposal evidence displayed');
     const rejectResponse = page.waitForResponse(response => response.url().endsWith('/api/simulator/proposals'), { timeout: 180000 });
-    if (await page.locator('.simulator-disclosure').getAttribute('open') === null) {
-      await page.getByText('추가 기능 · 변경 승인 연습', { exact: true }).click();
-    }
+    await page.getByRole('link', { name: '승인 연습', exact: true }).click();
     await page.getByRole('button', { name: 'Agent Simulator 제안 생성', exact: true }).click();
     const rejectedProposal = await (await rejectResponse).json();
     await page.getByRole('checkbox').check();

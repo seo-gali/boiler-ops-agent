@@ -86,7 +86,7 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
     if (!await page.locator('#workspace-panel').isVisible()) await page.locator('#open-agent').click();
     await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
     await page.locator('#sensor-group').selectOption(registry.sensors[sensor].equipment);
-    await page.getByTestId(`sensor-option-${sensor}`).click();
+    await page.locator('#sensor-select').selectOption(sensor);
     await page.getByRole('button', { name: '이 센서에 질문', exact: true }).click();
   }
   try {
@@ -98,7 +98,7 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
       await page.getByLabel('질문', { exact: true }).fill(question);
       const responsePromise = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
       const started = performance.now();
-      await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
+      await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
       const response = await responsePromise;
       entry.elapsed_ms = Math.round(performance.now() - started);
       entry.http_status = response.status();
@@ -176,7 +176,7 @@ export async function reviewAgentQuestions({ page, apiFetch, out, profile, forec
         await page.getByLabel('질문', { exact: true }).fill(question);
         const pending = page.waitForResponse(response => response.url().endsWith('/api/agent/query'), { timeout: 360000 });
         const started = performance.now();
-        await page.getByRole('button', { name: 'Agent 조회', exact: true }).click();
+        await page.getByRole('button', { name: '질문 보내기', exact: true }).click();
         const response = await pending;
         const answer = await response.json();
         assert.equal(response.status(), 200, JSON.stringify(answer));

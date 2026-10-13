@@ -5,10 +5,14 @@
 .equipment-list-kicker { font-size: 9px; color: #506685; letter-spacing: 1.3px; }
 .equipment-sensors .equipment-popup-close { width: 36px; height: 36px; min-height: 36px; padding: 0; flex: 0 0 36px; font-size: 22px; color: #284a71; background: #fff; border: 1px solid #b4c7de; border-radius: 9px; }
 .equipment-list-description { margin: 0; padding: 10px 14px 4px; font-size: 11px; color: #4e6172; line-height: 1.6; }
-.equipment-list-search { padding: 9px 14px; font-size: 11px; color: #405774; }
-.equipment-list-search span { display: block; margin-bottom: 5px; font-weight: 600; }
-.equipment-list-search input { width: 100%; border: 1px solid #a5b8cf; background: #fff; border-radius: 8px; padding: 8px 9px; min-height: 38px; font-size: 12px; }
+.equipment-list-choice { padding: 7px 14px; font-size: 11px; color: #405774; }
+.equipment-list-choice span { display: block; margin-bottom: 5px; font-weight: 600; }
+.equipment-list-choice select { width: 100%; min-width: 0; border: 1px solid #a5b8cf; background: #fff; color: #2c4159; border-radius: 8px; padding: 8px 9px; min-height: 38px; font: inherit; text-overflow: ellipsis; }
+.equipment-list-choice select:focus-visible { outline: 3px solid #ba7a2d; outline-offset: 3px; }
 .equipment-list-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px; padding: 0 14px 9px; font-size: 10px; color: #536779; }
+.equipment-list-quality { margin: 0; padding: 0 14px 8px; font-size: 10px; color: #536779; line-height: 1.6; }
+.equipment-list-quality span { display: block; margin-top: 3px; color: #385c80; }
+.equipment-list-zero-note { margin: 0 14px 9px; padding: 8px 9px; background: #edf4ff; border-radius: 6px; color: #385c80; font-size: 11px; line-height: 1.6; }
 .equipment-list-scroll { overflow-y: auto; overscroll-behavior: contain; padding: 0 9px 12px; min-height: 0; flex: 1; }
 .equipment-area h4 { margin: 10px 5px 6px; display: flex; align-items: center; gap: 6px; font-size: 11px; color: #385c80; }
 .equipment-area h4 span { padding: 1px 5px; font-size: 9px; border-radius: 5px; background: #e7eef6; }
