@@ -2,7 +2,7 @@
 
 보일러의 과거 운전 데이터를 **공장 지도에서 둘러보고, 센서 값·원하는 기간의 변화·AI 답변·5분 뒤 예측**을 확인하는 로컬 앱입니다. 변경 승인은 연습용 Simulator에서만 실행하며, 실제 발전설비를 제어하지 않습니다.
 
-[그림으로 보는 프로젝트 지도](https://seoheejung.github.io/boiler-ops-agent/)에서 기능과 코드 구조를 볼 수 있습니다. 이 링크는 **설명 페이지**이며, 실제 앱은 아래 방법으로 실행합니다.
+[그림으로 보는 프로젝트 지도](https://seo-gali.github.io/boiler-ops-agent/)에서 기능과 코드 구조를 볼 수 있습니다. 이 링크는 **설명 페이지**이며, 실제 앱은 아래 방법으로 실행합니다.
 
 ## 실행은 이렇게 하세요
 
@@ -97,7 +97,7 @@ AI 답변을 기다리는 동안 경과 시간이 표시됩니다. 취소하거�
 
 | 보고 싶은 내용 | 문서 |
 | --- | --- |
-| 기능 흐름·코드 지도·구현 전 설계 | [그림으로 보는 프로젝트 지도](https://seoheejung.github.io/boiler-ops-agent/) |
+| 기능 흐름·코드 지도·구현 전 설계 | [그림으로 보는 프로젝트 지도](https://seo-gali.github.io/boiler-ops-agent/) |
 | 개발 서버를 따로 실행하는 방법 | [수동 개발 안내](docs/local-development.md) |
 | 실제 실행과 검수 결과 | [선택 상자·고정 채팅·다중 센서 비교 개정](docs/results/phase7-select-chat-compare.md) · [이전 공장 탐색·대화·기간 조회](docs/results/phase7-game-chat-history.md) · [이전 작업 화면·단위 근거](docs/results/phase7-workspace.md) · [실행 검증](docs/results/phase7-local-start.md) |
 | 접근성·보안 점검 | [접근성 검수](docs/results/phase7-ui-accessibility-review.md) · [보안 보완 결과](docs/results/phase7-security-hardening.md) |
