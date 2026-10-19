@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager, suppress
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request, Response
 
 from fastapi.exceptions import RequestValidationError
+from starlette.concurrency import run_in_threadpool
 from starlette.responses import JSONResponse
 from backend.app.security import Security, SecurityMiddleware, Login
 from backend.app.agent.traces import TraceStore
@@ -169,7 +170,8 @@ async def agent_query(request: AgentQuery, http: Request):
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
     except AgentFailure as error:
-        raise HTTPException(503, {"trace_id": error.trace_id, "error": str(error)}) from error
+        raise HTTPException(503, {"trace_id": error.trace_id, "code": "agent_unavailable",
+                                  "error": "AI 답변을 완료하지 못했습니다. 잠시 후 다시 조회하세요."}) from error
 
 
 @app.get("/api/agent/traces/{trace_id}")
@@ -179,12 +181,12 @@ async def agent_trace(trace_id: UUID, request: Request):
 
 @app.get("/api/simulator")
 async def simulator_state(request: Request):
-    return app.state.simulator.snapshot(request.state.principal)
+    return await run_in_threadpool(app.state.simulator.snapshot, request.state.principal)
 
 
 @app.get("/api/simulator/audit")
 async def simulator_audit(request: Request, after_id: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
-    return app.state.simulator.audit_log(request.state.principal, after_id, limit)
+    return await run_in_threadpool(app.state.simulator.audit_log, request.state.principal, after_id, limit)
 
 
 @app.post("/api/simulator/proposals")
@@ -193,15 +195,16 @@ async def simulator_propose(request: ProposalRequest, http: Request):
         return await app.state.security.model_work(http.state.principal, lambda: app.state.simulator.propose(request, http.state.principal))
     except SimulatorError as error:
         raise HTTPException(error.status, str(error)) from error
-    except (ValueError, OSError, KeyError) as error:
-        raise HTTPException(503, f"Simulator recommendation failed: {type(error).__name__}: {error}") from error
+    except (ValueError, OSError, KeyError):
+        return JSONResponse({"code": "simulator_unavailable",
+                             "detail": "Simulator 제안을 만들지 못했습니다. 잠시 후 다시 시도하세요."}, status_code=503)
 
 
 @app.post("/api/simulator/proposals/{proposal_id}/decision")
 async def simulator_decide(proposal_id: UUID, decision: Decision, request: Request):
     try:
         app.state.security.operator(request.state.principal)
-        return app.state.simulator.decide(proposal_id, decision, request.state.principal)
+        return await run_in_threadpool(app.state.simulator.decide, proposal_id, decision, request.state.principal)
     except SimulatorError as error:
         raise HTTPException(error.status, str(error)) from error
 

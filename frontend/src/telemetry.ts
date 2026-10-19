@@ -15,13 +15,30 @@ export const useConnection = () => useSyncExternalStore(subscribe, () => connect
 export const useEvents = () => useSyncExternalStore(subscribe, () => events);
 export const useReading = (tag: string) => useSyncExternalStore(subscribe, () => snapshot.current?.sensors[tag]);
 export const usePaused = () => useSyncExternalStore(subscribe, () => paused);
+function equalFields<T extends object>(left: T, right: T) {
+  const keys = Object.keys(left) as (keyof T)[];
+  return keys.length === Object.keys(right).length && keys.every(key => Object.is(left[key], right[key]));
+}
+function shareCurrent(current: Telemetry | null, previous: Telemetry | null) {
+  if (!current || !previous || current === previous) return current;
+  const sensors = { ...current.sensors };
+  for (const [tag, reading] of Object.entries(sensors)) {
+    const prior = previous.sensors[tag];
+    if (prior && equalFields(reading, prior)) sensors[tag] = prior;
+  }
+  const shared = { ...current, sensors: equalFields(sensors, previous.sensors) ? previous.sensors : sensors };
+  return equalFields(shared, previous) ? previous : shared;
+}
 function applySnapshot(next: Snapshot) {
-  const current = next.current;
   const previous = snapshot.current;
+  const current = shareCurrent(next.current, previous);
+  const shared = { ...next, current };
+  if (equalFields(shared, snapshot)) return false;
   if (current && (!previous || previous.run_id !== current.run_id || previous.sequence !== current.sequence)) {
     events = previous?.run_id === current.run_id ? [...events.slice(-119), current] : [current];
   }
-  snapshot = next;
+  snapshot = shared;
+  return true;
 }
 export function toggleUpdates() {
   paused = !paused;
@@ -45,9 +62,9 @@ export function connectTelemetry() {
         const next = JSON.parse(data) as Snapshot;
         if (next.type !== 'telemetry' || !('current' in next)) throw new Error('Invalid telemetry message');
         latest = next;
-        if (!paused) applySnapshot(next);
-        else snapshot = { ...next, current: snapshot.current };
-        received = Date.now(); notify();
+        const changed = applySnapshot(paused ? { ...next, current: snapshot.current } : next);
+        received = Date.now();
+        if (changed) notify();
       } catch {
         snapshot = { ...snapshot, status: 'ERROR', stale: true, error: 'WebSocket message parsing failed' }; notify();
       }

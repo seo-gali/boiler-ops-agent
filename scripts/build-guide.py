@@ -2,6 +2,7 @@
 import html
 import json
 import re
+from functools import lru_cache
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +18,7 @@ FILES = [
     'docs/instructions/phase7-workspace.md', 'docs/results/phase7-workspace.md',
     'docs/results/phase7-game-chat-history.md',
     'docs/results/phase7-select-chat-compare.md',
+    'docs/results/phase7-performance.md',
     'docs/fonts/README.md',
     'backend/app/main.py', 'backend/app/security.py', 'backend/app/replay/producer.py',
     'backend/app/domain/state.py', 'backend/app/domain/history.py', 'backend/app/streaming/consumer.py',
@@ -34,6 +36,30 @@ FILES = [
     'frontend/src/sensor-trend.css', 'frontend/src/workspace.css',
     'scripts/import-sensor-definitions.py', 'scripts/dataset_path.py',
 ]
+
+
+@lru_cache(maxsize=64)
+def image_dimensions(path):
+    """문서 JPEG의 프레임 크기만 읽어 원본 비율 보존."""
+    with path.open('rb') as source:
+        if source.read(2) != b'\xff\xd8':
+            raise ValueError(f'Expected a JPEG document image: {path.name}')
+        while source.read(1) == b'\xff':
+            marker = source.read(1)
+            while marker == b'\xff':
+                marker = source.read(1)
+            if not marker or marker[0] in (0xda, 0xd9):
+                break
+            length = int.from_bytes(source.read(2), 'big')
+            if length < 2:
+                break
+            if 0xc0 <= marker[0] <= 0xcf and marker[0] not in (0xc4, 0xc8, 0xcc):
+                frame = source.read(5)
+                if len(frame) == 5:
+                    return int.from_bytes(frame[3:5], 'big'), int.from_bytes(frame[1:3], 'big')
+                break
+            source.seek(length - 2, 1)
+    raise ValueError(f'JPEG frame dimensions not found: {path.name}')
 
 
 def inline(text, source):
@@ -57,7 +83,8 @@ def inline(text, source):
         except ValueError:
             return label
         if image and relative.startswith('docs/images/') and path.is_file():
-            return keep(f'<img src="{html.escape(relative[5:], quote=True)}" alt="{label}" loading="lazy">')
+            width, height = image_dimensions(path)
+            return keep(f'<img src="{html.escape(relative[5:], quote=True)}" alt="{label}" width="{width}" height="{height}" loading="lazy" decoding="async">')
         if relative in FILES:
             return keep(f'<button data-doc="{html.escape(relative, quote=True)}">{label}</button>')
         return label
@@ -136,6 +163,13 @@ def main():
                           target.read_text(encoding='utf-8'), flags=re.DOTALL)
     if count != 1:
         raise ValueError('Expected exactly one guide-content block in docs/index.html')
+
+    def size_image(match):
+        attributes = re.sub(r'\s+(?:width|height|decoding)="[^"]*"', '', match[1])
+        width, height = image_dimensions(ROOT / 'docs' / match[2])
+        return f'<img{attributes} width="{width}" height="{height}" decoding="async">'
+
+    page = re.sub(r'<img\b([^>]*\bsrc="(images/[^"]+)"[^>]*)>', size_image, page)
     target.write_text(page, encoding='utf-8')
     print(f'Built {len(content)} offline document/source previews')
 

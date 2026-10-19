@@ -1,6 +1,6 @@
 import { apiFetch } from './session';
-import { useEffect, useId, useState } from 'react';
-import { useTelemetry } from './telemetry';
+import { memo, useEffect, useId, useMemo, useState } from 'react';
+import { useEvents } from './telemetry';
 import type { Reading } from './types';
 import './sensor-trend.css';
 
@@ -13,18 +13,27 @@ function sourceTimeMilliseconds(value: string) {
   return Date.UTC(Number(wallTime[1]), Number(wallTime[2]) - 1, Number(wallTime[3]), Number(wallTime[4]), Number(wallTime[5]), Number(wallTime[6] ?? 0), Number((wallTime[7] ?? '').padEnd(3, '0').slice(0, 3)));
 }
 
-export function SensorTrend({ tag, unit }: { tag: string; unit?: string | null }) {
+export const SensorTrend = memo(function SensorTrend({ tag, unit }: { tag: string; unit?: string | null }) {
   const descriptionId = useId();
-  const [received, setReceived] = useState<Point[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const telemetry = useTelemetry();
-  useEffect(() => { setReceived([]); setError(null); }, [tag, telemetry.current?.run_id]);
+  const events = useEvents();
+  const runId = events.at(-1)?.run_id;
+  const gapSequence = events.reduce<number | undefined>((gap, event, index) => index > 0 && event.sequence !== events[index - 1].sequence + 1 ? event.sequence : gap, undefined);
+  const [history, setHistory] = useState<{ tag: string; runId?: string; points: Point[]; error: string | null } | null>(null);
   useEffect(() => {
     const controller = new AbortController();
     apiFetch(`/api/sensors/history?tag=${encodeURIComponent(tag)}&limit=120`, { signal: controller.signal }).then(response => { if (!response.ok) throw new Error(`History HTTP ${response.status}`); return response.json(); })
-      .then(data => { if (!controller.signal.aborted) { setReceived(data.points); setError(null); } }).catch(error => { if (!controller.signal.aborted && error.name !== 'AbortError') { setReceived([]); setError(String(error)); } });
+      .then(data => { if (!controller.signal.aborted) setHistory({ tag, runId, points: data.points, error: null }); }).catch(error => { if (!controller.signal.aborted && error.name !== 'AbortError') setHistory({ tag, runId, points: [], error: String(error) }); });
     return () => controller.abort();
-  }, [tag, telemetry.current?.run_id, telemetry.current?.sequence]);
+  }, [tag, runId, gapSequence]);
+  const received = useMemo(() => {
+    const points = new Map<number, Point>();
+    if (history?.tag === tag && history.runId === runId) history.points.forEach(point => points.set(point.sequence, point));
+    events.forEach(event => {
+      if (event.sensors[tag]) points.set(event.sequence, { sequence: event.sequence, source_time: event.source_time, ...event.sensors[tag] });
+    });
+    return [...points.values()].sort((left, right) => left.sequence - right.sequence).slice(-120);
+  }, [events, history, runId, tag]);
+  const error = history?.tag === tag && history.runId === runId ? history.error : null;
 
   const latestTime = sourceTimeMilliseconds(received.at(-1)?.source_time ?? '');
   const points = received.filter(point => {
@@ -59,4 +68,4 @@ export function SensorTrend({ tag, unit }: { tag: string; unit?: string | null }
       <details><summary>추이 원본값 표로 보기</summary><table data-testid="sensor-trend-source-table"><caption>{tag} · 최근 2분 원본 기록</caption><thead><tr><th scope="col">원본 시각</th><th scope="col">원본값 · {unit ?? '단위 정의 없음'}</th><th scope="col">상태</th></tr></thead><tbody>{points.map(point => <tr key={point.sequence} data-testid="sensor-trend-source-row"><td>{point.source_time}</td><td>{point.raw || '결측'}</td><td>{point.quality === 'valid' ? '원본 수신' : point.quality === 'parse_error' ? '파싱 오류' : '결측'}</td></tr>)}</tbody></table></details>
     </>}
   </div>;
-}
+});

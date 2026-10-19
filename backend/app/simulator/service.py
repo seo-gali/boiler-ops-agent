@@ -21,7 +21,7 @@ POLICY = {"id": "local-demo-v1", "parameter": "demo_bias", "unit": "simulation_s
 class ProposalRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     source_trace_id: uuid.UUID
-    intent: str = Field(min_length=1, max_length=500)
+    intent: str = Field(min_length=1, max_length=500, pattern=r"\S")
 
 
 class Recommendation(BaseModel):

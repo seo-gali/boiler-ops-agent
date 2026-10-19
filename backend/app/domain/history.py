@@ -41,7 +41,12 @@ def metadata(settings: Settings):
 
 def query_range(settings: Settings, tag: str, unit: str | None, start: datetime, end: datetime, limit: int):
     stat = settings.dataset.stat()
-    source = _index(settings, stat.st_mtime_ns, stat.st_size)
+    return _query_range(settings, stat.st_mtime_ns, stat.st_size, tag, unit, start, end, limit)
+
+
+@lru_cache(maxsize=16)
+def _query_range(settings: Settings, modified: int, size: int, tag: str, unit: str | None, start: datetime, end: datetime, limit: int):
+    source = _index(settings, modified, size)
     times = source['times']
     if times and (start.utcoffset() is None) != (times[0].utcoffset() is None):
         raise ValueError("조회 시각의 시간대 형식이 CSV 원본과 다릅니다.")
@@ -85,7 +90,7 @@ def query_range(settings: Settings, tag: str, unit: str | None, start: datetime,
         if value is None:
             gap = True
     current = settings.dataset.stat()
-    if current.st_mtime_ns != stat.st_mtime_ns or current.st_size != stat.st_size:
+    if current.st_mtime_ns != modified or current.st_size != size:
         raise ValueError("CSV changed during history query; retry the request")
     return {
         "tag": tag, "unit": unit, "start": start.isoformat(), "end": end.isoformat(),

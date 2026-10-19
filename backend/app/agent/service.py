@@ -18,7 +18,7 @@ MODEL_OPTIONS = {"temperature": 0, "seed": 7, "num_predict": 220, "num_ctx": 819
 
 class AgentQuery(BaseModel):
     model_config = ConfigDict(extra="forbid")
-    question: str = Field(min_length=1, max_length=1000)
+    question: str = Field(min_length=1, max_length=1000, pattern=r"\S")
     equipment: str = Field(min_length=1, max_length=40)
     tag: str | None = Field(default=None, max_length=200)
 

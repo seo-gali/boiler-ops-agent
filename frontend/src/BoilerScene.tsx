@@ -48,7 +48,7 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onSelect, onHover }: { item: Equipment; selected: boolean; hovered: boolean; onSelect: () => void; onHover: (hovered: boolean) => void }) {
+const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onSelect, onHover }: { item: Equipment; selected: boolean; hovered: boolean; onSelect: (id: string) => void; onHover: (id: string | null) => void }) {
   const [x, , z] = item.position;
   const [w, h, d] = item.size;
   const colors = equipmentColors[item.id] ?? equipmentColors.stack;
@@ -103,7 +103,7 @@ const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onS
       {[.28, .56, .78].map(y => <mesh key={y} position={[0, h * y, 0]}><cylinderGeometry args={[w * (.59 - y * .15), w * (.59 - y * .15), .13, 24]} />{trim}</mesh>)}
     </>;
   }
-  return <group position={[x, hovered ? .09 : 0, z]} onClick={event => { event.stopPropagation(); onSelect(); }} onPointerOver={event => { event.stopPropagation(); onHover(true); }} onPointerOut={() => onHover(false)}>
+  return <group position={[x, hovered ? .09 : 0, z]} onClick={event => { event.stopPropagation(); onSelect(item.id); }} onPointerOver={event => { event.stopPropagation(); onHover(item.id); }} onPointerOut={() => onHover(null)}>
     {shape}
     <mesh position={[0, .04, 0]} receiveShadow><boxGeometry args={[w + .65, .13, d + .65]} /><meshStandardMaterial color={selected ? '#fff3aa' : '#f3f2de'} /></mesh>
     {selected && <mesh position={[0, .13, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[Math.max(w, d) * .7, Math.max(w, d) * .7 + .12, 40]} /><meshBasicMaterial color="#eabb39" /></mesh>}
@@ -175,7 +175,31 @@ function MarkerLabel({ sensor, equipment, index, selected, equipmentSelected, on
   </button>;
 }
 
-export function BoilerViewport({ registry, selected, onSelect, onEquipment, onInspect, active = true }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void; onEquipment: (id: string) => void; onInspect?: (tag: string) => void; active?: boolean }) {
+function SceneFallback() {
+  const telemetry = useTelemetry();
+  return <div className="fallback"><b>3D 화면을 표시할 수 없습니다</b><p>위의 설비 목록에서 모든 그룹을 선택할 수 있습니다.</p><span>{telemetry.status} · Kafka {telemetry.kafka}</span></div>;
+}
+
+const SceneCanvas = memo(function SceneCanvas({ registry, selected, selectedEquipment, hovered, zoom, pan, markers, cameraScale, animate, onEquipment, onSensor, onHover, onProject, onLost }: {
+  registry: Registry; selected: string | null; selectedEquipment?: string; hovered: string | null; zoom: number; pan: Pan; markers: Sensor[];
+  cameraScale: { current: number }; animate: boolean; onEquipment: (id: string) => void; onSensor: (tag: string) => void;
+  onHover: (id: string | null) => void; onProject: (points: Point[]) => void; onLost: (lost: boolean) => void;
+}) {
+  const fallback = <SceneFallback />;
+  return <SceneBoundary fallback={fallback}><Canvas orthographic camera={{ position: [14, 12, 17], near: .1, far: 100 }} shadows frameloop={animate ? 'always' : 'demand'} fallback={fallback} onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); onLost(true); }); }}>
+    <SceneCamera zoom={zoom} pan={pan} markers={markers} equipment={registry.equipment} scale={cameraScale} onProject={onProject} />
+    <color attach="background" args={['#e4f3fa']} /><ambientLight intensity={1.8} /><directionalLight position={[5, 12, 6]} intensity={2.2} castShadow />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.07, 0]} receiveShadow><planeGeometry args={[30, 28]} /><meshStandardMaterial color="#c9dfb1" /></mesh>
+    <mesh position={[0, -.06, .5]} receiveShadow><boxGeometry args={[22, .12, 20]} /><meshStandardMaterial color="#dfe9cb" /></mesh>
+    <gridHelper position={[0, .01, 0]} args={[24, 12, '#acbd99', '#c1d0b0']} />
+    {registry.flows.map((flow, index) => <FlowDecoration key={flow.id} flow={flow} equipment={registry.equipment} index={index} animate={animate} />)}
+    {registry.equipment.map(item => <EquipmentMesh key={item.id} item={item} selected={selectedEquipment === item.id} hovered={hovered === item.id} onSelect={onEquipment} onHover={onHover} />)}
+    {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); onSensor(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? '#d39b21' : equipmentColors[sensor.equipment]?.dark ?? '#355479'} /></mesh>)}
+  </Canvas></SceneBoundary>;
+});
+SceneCanvas.displayName = 'SceneCanvas';
+
+export const BoilerViewport = memo(function BoilerViewport({ registry, selected, onSelect, onEquipment, onInspect, active = true }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void; onEquipment: (id: string) => void; onInspect?: (tag: string) => void; active?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
@@ -253,11 +277,10 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment, onIn
     return () => element?.removeEventListener('wheel', wheel);
   }, []);
   const reset = () => { setZoom(1); setPan({ x: 0, y: 0 }); stop(); };
-  const fallback = <div className="fallback"><b>3D 화면을 표시할 수 없습니다</b><p>위의 설비 목록에서 모든 그룹을 선택할 수 있습니다.</p><span>{telemetry.status} · Kafka {telemetry.kafka}</span></div>;
   const names = Object.fromEntries(registry.equipment.map(item => [item.id, item.name]));
   const describedEquipment = registry.equipment.find(item => item.id === (hovered ?? selectedEquipment));
-  const chooseEquipment = (id: string) => { setPopupEquipment(id); onEquipment(id); };
-  const chooseSensor = (tag: string) => { const id = registry.sensors[tag]?.equipment; if (registry.equipment.some(item => item.id === id)) setPopupEquipment(id); onSelect(tag); };
+  const chooseEquipment = useCallback((id: string) => { setPopupEquipment(id); onEquipment(id); }, [onEquipment]);
+  const chooseSensor = useCallback((tag: string) => { const id = registry.sensors[tag]?.equipment; if (registry.equipment.some(item => item.id === id)) setPopupEquipment(id); onSelect(tag); }, [registry, onSelect]);
   const closeEquipment = () => { const id = popupEquipment; setPopupEquipment(null); document.getElementById(`equipment-${id}`)?.focus({ preventScroll: true }); };
   return <section className="viewport game-viewport panel" aria-label="보일러 계통도" data-animation={animate ? 'decorative' : 'paused'}>
     <div className="panel-heading"><div><span className="eyebrow">BOILER WORLD</span><h2>내 보일러 탐색하기</h2></div><span className="quiet">{registry.equipment.length}개 설비 그룹 · 논리 배치</span></div>
@@ -285,16 +308,7 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment, onIn
       onPointerUpCapture={event => { if (drag.current) { event.stopPropagation(); if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId); drag.current = null; } }}
       onPointerCancel={stop} onLostPointerCapture={() => { drag.current = null; }}
       onClickCapture={event => { if (space.current || dragged.current) { event.stopPropagation(); event.preventDefault(); dragged.current = false; } }}>
-      {lost ? fallback : <SceneBoundary fallback={fallback}><Canvas orthographic camera={{ position: [14, 12, 17], near: .1, far: 100 }} shadows frameloop={animate ? 'always' : 'demand'} fallback={fallback} onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); setLost(true); }); }}>
-        <SceneCamera zoom={zoom} pan={pan} markers={markers} equipment={registry.equipment} scale={cameraScale} onProject={setPoints} />
-        <color attach="background" args={['#e4f3fa']} /><ambientLight intensity={1.8} /><directionalLight position={[5, 12, 6]} intensity={2.2} castShadow />
-        <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.07, 0]} receiveShadow><planeGeometry args={[30, 28]} /><meshStandardMaterial color="#c9dfb1" /></mesh>
-        <mesh position={[0, -.06, .5]} receiveShadow><boxGeometry args={[22, .12, 20]} /><meshStandardMaterial color="#dfe9cb" /></mesh>
-        <gridHelper position={[0, .01, 0]} args={[24, 12, '#acbd99', '#c1d0b0']} />
-        {registry.flows.map((flow, index) => <FlowDecoration key={flow.id} flow={flow} equipment={registry.equipment} index={index} animate={animate} />)}
-        {registry.equipment.map(item => <EquipmentMesh key={item.id} item={item} selected={selectedEquipment === item.id} hovered={hovered === item.id} onSelect={() => chooseEquipment(item.id)} onHover={value => setHovered(value ? item.id : null)} />)}
-        {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); chooseSensor(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? '#d39b21' : equipmentColors[sensor.equipment]?.dark ?? '#355479'} /></mesh>)}
-      </Canvas></SceneBoundary>}
+      {lost ? <SceneFallback /> : <SceneCanvas registry={registry} selected={selected} selectedEquipment={selectedEquipment} hovered={hovered} zoom={zoom} pan={pan} markers={markers} cameraScale={cameraScale} animate={animate} onEquipment={chooseEquipment} onSensor={chooseSensor} onHover={setHovered} onProject={setPoints} onLost={setLost} />}
       {!lost && dimensions.width > 0 && <div className="marker-layer">
         <svg className="marker-leaders" width={dimensions.width} height={dimensions.height} aria-hidden="true">{points.map((point, index) => {
           const slot = slots[index];
@@ -320,4 +334,4 @@ export function BoilerViewport({ registry, selected, onSelect, onEquipment, onIn
     </div>
     <div className="scene-flow-caption" aria-label="논리 계통 흐름">{registry.flows.map(flow => <p key={flow.id}><b>{flow.label}</b><span>{flow.equipment.map(id => names[id] ?? id).join(' → ')}</span></p>)}</div>
   </section>;
-}
+});

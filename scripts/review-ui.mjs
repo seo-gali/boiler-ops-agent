@@ -157,6 +157,15 @@ async function reviewDocumentation() {
     for (const name of ['index.html', '404.html']) {
       const file = resolve(root, 'docs', name);
       await page.goto(base + name);
+      if (name === 'index.html') {
+        const images = await page.locator('img').evaluateAll(elements => elements.map(image => ({
+          width: Number(image.getAttribute('width')), height: Number(image.getAttribute('height')),
+          loading: image.loading, decoding: image.decoding,
+        })));
+        assert.ok(images.length > 0 && images.every(image => image.width > 0 && image.height > 0 && image.loading === 'lazy' && image.decoding === 'async'), 'Images reserve intrinsic space and defer loading/decoding');
+        assert.match(readFileSync(resolve(root, 'docs/fonts/pretendard.css'), 'utf8'), /src:\s*local\('Pretendard Variable'\),\s*url\(/);
+        results.checks.push('Images reserve space with lazy loading and async decoding; CSS prefers installed Pretendard before the WOFF2 fallback');
+      }
       const links = await page.locator('a[href], link[href], img[src]').evaluateAll(elements => elements.map(element => element.getAttribute('href') ?? element.getAttribute('src')));
       for (const link of links) {
         if (/^(https?:|#)/.test(link)) continue;
@@ -202,6 +211,7 @@ async function reviewDocumentation() {
     const answerTable = await page.getByRole('dialog').locator('table').first().innerText();
     assert.ok(answerTable.includes('66.52') && answerTable.includes('계산 불가') && answerTable.includes('Naive'));
     await page.getByRole('dialog').getByRole('img').evaluate(image => image.decode());
+    assert.equal(await page.getByRole('dialog').getByRole('img').evaluate(image => Number(image.getAttribute('width')) === image.naturalWidth && Number(image.getAttribute('height')) === image.naturalHeight && image.decoding === 'async'), true);
     await inspect(page, 'docs-agent-review-320', output);
     assert.equal(await page.getByRole('dialog').evaluate(element => element.scrollWidth > element.clientWidth + 1), false);
     await page.screenshot({ path: resolve(output, 'docs-agent-review-320.png'), fullPage: true });
