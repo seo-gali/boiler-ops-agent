@@ -17,83 +17,43 @@
 | 데이터 출처 | 공공데이터포털 |
 | 현재 진행 상태 | Phase 1~7 구현 및 로컬 통합 E2E 검증 완료 |
 
-### Phase 7 보안 보완 범위 — 2026-10-05 사용자 요청
+## 2. 프로젝트 목표와 현재 작업
 
-감사에서 확인된 무인증 조회·제안, 교차 Origin WebSocket, 자원 한도 부재,
-Kafka 생산자 신뢰, 공유 승인 자격, 오래된 근거 재사용을 현재 Phase의 보완 작업으로 처리한다.
+현재 범위는 Phase 1~7의 유지·보완이다. 새 기능과 스택 변경은 사용자의 현재 요청에 포함된 범위에서만 진행한다.
 
-- 사용자별 고엔트로피 자격의 해시 설정과 만료 가능한 HttpOnly 세션. 역할은 viewer/operator.
-- 관측 조회는 인증된 사용자, Agent·제안·결정은 operator. Trace·제안·Audit는 본인 소유만 조회·변경.
-- 변경 요청과 WebSocket은 설정된 정확한 Origin만 허용. 로그아웃·만료 세션의 연결 종료.
-- HTTP 본문·요청 속도·모델 동시 작업·WebSocket 연결·Trace/제안 저장 한도. Audit 페이지네이션.
-- Kafka SASL 인증과 생산자/소비자 Topic ACL. 관리 자격은 별도 초기화 도구에서만 사용.
-- 제안과 결정 시 근거의 소유자·생성 시각·Tag·재생 run·관측 상태 검사. 같은 Trace로 중복 제안 거부.
-- 기존 공유 SIMULATOR_APPROVAL_TOKEN 사용 중단. 기존 소유자 없는 기록은 인증 사용자에게 공개하지 않음.
-- 새 의존성, 외부 인증 서비스, 실제 설비 제어, 운영 배포는 이번 범위에 포함하지 않음.
+### 작업별 지침
 
-계약과 실패 시나리오 및 E2E 완료 기준은 `docs/instructions/phase7-security-hardening.md`에 정의한다.
+아래에서 작업에 해당하는 문서만 확인한다. 여러 주제를 바꾸면 해당 계약을 함께 적용한다.
 
-### Phase 7 질문별 AI 응답 검수 — 2026-10-06 사용자 요청
+| 작업 | 구현·완료 기준 |
+| --- | --- |
+| 데이터 재생·수신 | [Phase 1](../docs/instructions/phase1-realtime-monitoring.md) |
+| 센서·단위·설비 연결 | [Phase 2](../docs/instructions/phase2-domain-mapping.md) |
+| 운전값 비교·이력 | [Phase 3](../docs/instructions/phase3-operational-monitoring.md) |
+| AI 읽기 도구 | [Phase 4](../docs/instructions/phase4-read-agent.md) |
+| 온도 예측 | [Phase 5](../docs/instructions/phase5-temperature-forecast.md) |
+| Simulator 제안·승인 | [Phase 6](../docs/instructions/phase6-controlled-simulator.md) |
+| 전체 통합 경계 | [Phase 7 통합 검증](../docs/instructions/phase7-integrated-validation.md) |
+| 인증·소유권·자원 한도 | [보안 계약](../docs/instructions/phase7-security-hardening.md) |
+| AI 답변·질문별 근거 | [답변 계약](../docs/instructions/phase7-agent-answers.md) |
+| 한 명령 실행·키 재발급 | [로컬 실행](../docs/instructions/phase7-local-start.md) |
+| 공장·센서 선택·채팅·기간 조회 | [작업 화면](../docs/instructions/phase7-workspace.md) |
+| 지침·문서 정리 | [코딩 기준](../CODING_STANDARDS.md) |
 
-- 현재 로컬 모델로 현재값·온도 추이·목표 차이·5분 예측 신뢰도·밸브 조작 질문을 실행하고, 도구·근거·답변·처리 시간을 변경 전후 기록한다.
-- 서버는 질문에 맞는 결론을 먼저 구성하고, 원본 시각·조회 근거와 짧은 한계를 함께 제공한다. 단위·제어 효과·허용 범위는 추측하지 않는다.
-- 실제 CSV → Kafka → API → 브라우저와 로컬 모델을 통과하는 E2E로 답변의 수치와 판단을 대조한다. 모델 교체는 실제 질문 비교 후 결정한다.
-- 상세 계약과 실패 검토는 `docs/instructions/phase7-agent-answers.md`, 실행 결과는 `docs/results/phase7-agent-answers.md`에 기록한다.
+### 현재 화면 범위
 
-### Phase 7 쉬운 로컬 실행 — 2026-10-08 사용자 요청
+- 공장 모니터링에서 7개 논리 설비와 전체 118개 센서를 탐색한다. 주증기·발전 지표와 위치 미확인 센서는 그림의 설비와 구분한다.
+- 메인 메뉴는 공장 모니터링·기간 조회·승인 연습·변경 기록이다. 재열기 5분 예측은 공장 아래에 함께 표시한다.
+- 설비·묶음·센서 선택으로 범위를 좁힌다. 오른쪽 도우미는 센서 상세·AI 질문 두 탭이며 질문 대상과 화면 탐색 대상을 분리한다.
+- 다중 센서 기간 비교, 최근 원본 시각 기준 120초 추이, 고정 채팅·초안·취소의 상세 동작은 작업 화면 지침을 따른다.
+- 게임 표현과 흐름은 논리 탐색용이다. 단위·실제 설치 위치·위험·제어 효과를 추정하지 않는다.
 
-- 프로젝트 루트의 `npm start` 하나로 기존 Kafka·API·CSV 재생·화면을 실행한다. 신규 의존성과 인증 우회는 추가하지 않는다.
-- 기존 설정·자격·데이터를 보존하고, 처음 실행할 때만 누락된 설정과 예측 모델을 준비한다.
-- README의 첫 실행 안내를 짧게 만들고 수동 개발·진단 절차는 별도 문서로 분리한다.
-- 시작·실패·종료와 실제 브라우저의 로그인·데이터 수신을 E2E로 확인한다. 계약과 실패 검토는 `docs/instructions/phase7-local-start.md`에 기록한다.
+### 2026-10-18 지침 재구조화
 
-### Phase 7 로그인 키 복구와 메인 README — 2026-10-10 사용자 요청
-
-- 기존 키를 보관하지 못한 사용자가 `npm run start:reset-key`로 operator 키만 재발급하고 앱을 시작할 수 있게 한다.
-- Kafka 자격, 다른 사용자, operator의 ID·역할·기록 소유권을 보존한다. 기존 키 복원·로그인 우회·키 원문 저장은 하지 않는다.
-- 사용 중인 앱과 환경 변수의 인증 설정 덮어쓰기를 먼저 확인한다. 잘못된 기존 설정에서는 변경하지 않는다.
-- 메인 README와 시작 안내에 발급·재발급·로그인·종료 방법을 바로 찾을 수 있게 설명한다.
-
-### Phase 7 작업 화면 사용성 보완 — 2026-10-10 사용자 요청
-
-- 설비 도형·센서 표시·목록에서 같은 대표 센서를 선택하고 한글 이름과 설명을 제공한다.
-- Space를 누른 동안 마우스 드래그로 이동하고 휠로 확대·축소한다. 고정 시점과 버튼·키보드 대안을 유지한다.
-- 고정 메뉴와 오른쪽 도우미 패널에서 센서 상세·AI 질문·Simulator 승인·변경 기록을 함께 탐색한다. 조회 기록을 보기 위해 JSON 새 탭으로 이동하지 않는다.
-- 앱과 문서에 로컬 Pretendard 글꼴을 적용한다. 신규 실행 패키지는 추가하지 않는다.
-- 단위는 해당 CSV의 정의·환산 근거가 확인될 때만 부여한다. 근거가 없으면 원본 수치라는 사실과 이유를 명확히 표시한다.
-- 계약·실패 검토는 `docs/instructions/phase7-workspace.md`, 실제 검증은 `docs/results/phase7-workspace.md`에 기록한다.
-
-## 2. 프로젝트 목표
-
-### Phase 7 탐색·질문 맥락 재정리 — 2026-10-12 사용자 요청
-
-#### 2026-10-13 추가 조작 개정
-
-- 기간 조회에서 여러 센서를 선택하고 같은 단위의 관측을 비교한다. 다른 단위는 별도 그래프로 표시하며 마우스·터치·키보드로 원본 시각과 값을 확인한다.
-- 사용자 지시의 삭제 대상은 마우스를 올렸을 때 뜨는 기본 안내 박스다. 기능 이름과 접근 가능한 이름을 유지하고 중복 네이티브 툴팁을 제거한다.
-- 설비·세부 묶음·센서 선택 상자로 센서를 고른다. 중복 검색 입력과 전체 검색 링크는 제거한다.
-- 재열기 5분 예측은 공장 아래에 함께 표시하고 기존 예측 메뉴는 승인 연습·변경 기록으로 바꾼다. 단위 안내는 본문 맨 아래로 옮긴다.
-- 채팅은 대화 영역만 스크롤하고 입력·전송은 하단에 고정한다. 질문 예시는 대화 안에 두고 패널을 부드럽게 연다. 기존 질문 고정·초안·취소 계약은 유지한다.
-- 센서 상세의 추이와 원본 표는 최신 CSV 시각 기준 최근 120초만 표시한다. 급탄기의 0·결측 상태는 원본 전체와 대조하고 실제 운전 원인을 추정하지 않는다.
-
-추가 개정: 사용자가 게임처럼 탐색하는 공장 지도, 설비별 전체 센서 상태 목록, 채팅 형태의 누적 질문, 닫기 확인, 쉬운 센서 세부 분류와 전체 검색, 원하는 원본 기간의 그래프 조회를 요청했다. 모니터링·기간 조회·5분 예측을 별도 화면으로 제공하고 중복 수신 표를 제거한다. 자동 갱신과 연결 상태는 상단으로 통합한다. 주증기 지표는 실제 설비 소속 근거가 없어 과열기와 분리한다. 게임 표현과 움직임은 논리 탐색용이며 실제 위험·설비 동작·설치 좌표를 생성하지 않는다. 조회 API는 원본 CSV의 기간을 읽는 기능에 한정한다.
-
-이번 추가 개정의 범위:
-
-- 그림의 7개 논리 그룹 110개, 주증기 지표 5개, 발전 지표 2개, 위치 미확인 1개로 원본 센서 118개를 모두 탐색한다. 주증기 압력·유량을 과열기의 온도 센서와 동일한 값으로 표시하지 않는다.
-- 공장의 설비를 누르면 해당 설비의 전체 센서가 보이는 목록을 연다. 원본 센서 이름으로 세부 묶음을 제공하며 실제 설치 좌표는 추정하지 않는다.
-- AI 대화는 질문·답변·근거를 여러 번 누적해 표시한다. 각 질문은 독립적인 서버 조회이며 이전 대화 내용을 모델 입력에 자동으로 추가하지 않는다.
-- 닫기는 X 하나로 표시한다. 답변 대기 또는 초안이 있을 때 닫기 확인을 거치며, 승인해 닫으면 브라우저 대기는 취소하되 초안·대화 기록은 보존한다. 탭을 떠나는 확인에서는 조회를 계속한다.
-- 원본 CSV의 기간과 센서를 선택해 그래프를 조회한다. 인증된 읽기 전용 API로 원본 수치와 결측을 유지하며, 표시 수를 줄일 때도 실제 관측점만 사용한다.
-
-추가 개정의 계약은 `docs/instructions/phase7-workspace.md`, 해당 실행의 결과는 `docs/results/phase7-game-chat-history.md`에 별도로 기록한다. 이전 `phase7-workspace.md`의 검수 기록을 이번 변경의 검증으로 대체하지 않는다.
-
-- 계통도는 논리 설비 그룹별 고정 대표 센서를 표시한다. 다른 센서 선택 때문에 같은 이름표의 의미가 바뀌지 않게 한다.
-- 설비 선택을 그림 위에 배치하고 서로 구분되는 논리 구조물·겹치지 않는 이름표로 탐색을 개선한다. 실제 설비 대수나 위치는 추정하지 않는다.
-- 센서는 설비/분류를 먼저 고르고 그 안에서 검색·선택한다. 전체 CSV 센서는 누락 없이 접근할 수 있게 한다.
-- 화면에서 살펴보는 센서와 AI 질문 대상을 분리한다. 전송 중·작성 중·완료된 질문은 다른 설비를 눌러도 보존하고 명시적으로 새 질문을 시작할 때만 대상을 바꾼다.
-- 전역 AI 진입은 작은 버튼 하나로 통합하고 승인 연습·기록은 도우미 내부로 모은다. 예시는 입력값 대신 placeholder/선택 가능한 예시로 제공한다.
-- 실제 모델 요청의 경과 시간·취소·시간 초과·오류 재시도를 표시하고 실제 응답과 원본 근거를 다시 대조한다.
+- AGENTS.md를 최소 진입점으로 줄이고 공통 구현·검증·정리 기준은 CODING_STANDARDS.md로 이동한다.
+- 작업별 문서만 읽도록 연결하고 중복 규칙·대체된 UI 요구·불필요한 일괄 검증 의무를 제거한다.
+- 문서 정합성 → 영향받는 동작의 실패 확인 → 최소 구현 → 불용 항목 정리 순서를 적용한다.
+- 이번 변경은 문서와 오프라인 문서 탐색만 다룬다. 제품 동작·의존성·원본 데이터·DB는 변경하지 않는다.
 
 BoilerOps Agent는 정적인 분 단위 발전설비 데이터를 시간 순서대로 재생해 실시간 보일러 운전 환경을 구성한다.
 
@@ -642,270 +602,37 @@ Successful Write Trace Coverage = 100%
 
 핵심 E2E 시나리오는 검증 가능한 아티팩트를 남긴다.
 
-## 9. 화면 설계 원칙
+## 9. 화면 설계
 
-Phase 1 화면 세부 기준은 `DESIGN.md`를 따른다.
+현재 UI의 단일 기준은 [DESIGN.md](../DESIGN.md)다. 센서 선택·채팅·기간 조회의 세부 계약은 작업 화면 지침을 따른다.
 
-보일러 화면은 실제 발전소 P&ID 복제가 아니라 **운전 데이터 이해를 위한 2.5D 논리 Operations View**다.
+## 10. 구현 기준
 
-일반 보일러 구조 공개자료는 계통 관계 참고에만 사용한다.
-
-### 9.1 디자인 방향
-
-> 산업 소프트웨어처럼 보이기 위한 화면보다 산업 상태를 더 빨리 이해할 수 있는 화면을 만든다.
-
-전략 게임의 공간 탐색 방식에서 아래 요소만 가져온다.
-
-```text
-Overview
-→ Equipment Selection
-→ Sensor Selection
-→ Detail Inspection
-```
-
-게임 요소 자체를 가져오지 않는다.
-
-- 점수
-- 미션
-- 게임 효과음
-- 캐릭터
-- 과도한 애니메이션
-- 자유 Camera 탐색
-
-### 9.2 Camera
-
-기본 시점은 고정 Isometric Camera다.
-
-허용:
-
-- 제한된 Zoom
-- 제한된 Pan
-- Equipment 선택
-- Sensor 선택
-- 선택 Highlight
-
-Phase 1 제외:
-
-- 자유 Rotate
-- 1인칭 이동
-- Fly Camera
-- Cinematic Camera
-
-### 9.3 Sensor 위치 신뢰도
-
-| 상태 | 의미 |
-| --- | --- |
-| `verified-by-tag` | Column Name에서 계통·입구·출구·A/B 위치를 직접 확인 가능 |
-| `logical-group` | 계통은 확인되지만 실제 계측기 위치는 확인 불가 |
-| `unverified` | 공개 정보만으로 위치를 결정할 수 없음 |
-
-### 9.4 상태 표현
-
-Phase 1에서 표현 가능한 상태:
-
-```text
-LIVE
-STALE
-DISCONNECTED
-ERROR
-SELECTED
-UNMAPPED
-```
-
-근거가 확보되기 전 아래 상태를 만들지 않는다.
-
-```text
-NORMAL
-WARNING
-CRITICAL
-DANGER
-```
-
-색상만으로 상태를 전달하지 않는다.
-
-## 10. Frontend 구조 원칙
-
-React UI와 R3F Scene 책임을 분리한다.
-
-```text
-MonitoringPage
-├─ StatusBar
-├─ KPIBar
-├─ BoilerViewport
-│  └─ BoilerScene
-├─ EquipmentInspector
-└─ OperationsFeed
-```
-
-Scene:
-
-```text
-BoilerScene
-├─ PlantEnvironment
-├─ Feeders
-├─ Furnace
-├─ Superheater
-├─ Reheater
-├─ Economizer
-├─ SCR
-├─ Stack
-├─ ProcessFlow
-└─ SensorMarkers
-```
-
-WebSocket Event마다 Scene 전체를 다시 생성하지 않는다.
-
-```text
-WebSocket Message
-        ↓
-Telemetry State
-        ↓
-Changed Tags
-        ↓
-KPI / Inspector / Sensor Marker
-```
-
-3D Geometry와 Material은 가능한 범위에서 재사용한다.
-
-복잡한 3D Asset과 과도한 Rendering Effect를 Phase 1에 먼저 넣지 않는다.
+공통 코드·데이터·환경 기준은 [CODING_STANDARDS.md](../CODING_STANDARDS.md)의 해당 절을 따른다. 구현 세부 구조와 API 계약은 작업별 지침에서 확인한다.
 
 ## 11. 테스트 및 검증 전략
 
-프로젝트 공통 테스트 규칙은 `AGENTS.md`가 최종 기준이다.
-
-각 Phase는 기능 구현보다 사용자 관점의 전체 흐름을 E2E로 검증한다.
-
-Phase 1 E2E 최소 시나리오:
-
-```text
-CSV 입력
-→ Replay Event 발행
-→ Kafka 수신
-→ FastAPI State 갱신
-→ WebSocket 전달
-→ React State 변경
-→ R3F Sensor Marker 갱신
-→ Sensor 선택
-→ Inspector 값 검증
-→ 검증 아티팩트 생성
-```
-
-아티팩트:
-
-```text
-artifacts/e2e/phase1/
-├─ run.json
-├─ telemetry.jsonl
-├─ dashboard.png
-└─ selected-sensor.png
-```
-
-`dashboard.png`에서 확인:
-
-- Streaming 상태
-- Kafka 상태
-- WebSocket 상태
-- Source Time
-- Sequence
-- 대표 KPI
-- Isometric Boiler Scene
-- 대표 Sensor Marker
-- Operations Feed
-
-`selected-sensor.png`에서 확인:
-
-- 선택한 Sensor
-- Scene 선택 상태
-- Inspector의 동일 Tag
-- Current Value
-- Source Time
-- Mapping Confidence
-
-아티팩트에는 실행 입력, 수신 Sequence, 최종 UI 상태를 다시 확인할 수 있는 정보가 포함되어야 한다.
+변경 순서와 검증 범위는 [코딩 기준](../CODING_STANDARDS.md)의 작업 순서·검증 절을 따른다. 각 Phase의 시나리오는 해당 기능이나 통합 경계를 검증할 때 적용하며 모든 변경의 필수 실행 목록으로 사용하지 않는다.
 
 ## 12. 문서 체계
 
-```text
-.project/plan.md
-AGENTS.md
-DESIGN.md
-docs/instructions/phaseN-*.md
-docs/results/phaseN-*.md
-README.md
-```
-
-역할:
-
 | 문서 | 역할 |
 | --- | --- |
-| `.project/plan.md` | 프로젝트 전체 범위와 Phase 경계 |
-| `AGENTS.md` | 저장소 전체 작업 규칙 |
-| `DESIGN.md` | 현재 UI 구현 기준 |
-| `docs/instructions/*` | 현재 Phase 작업 범위와 완료 기준 |
-| `docs/results/*` | 실제 구현·검증 결과 |
-| `README.md` | 사람을 위한 프로젝트 설명과 현재 상태 |
+| [AGENTS.md](../AGENTS.md) | 최소 작업 진입점과 보호 경계 |
+| [CODING_STANDARDS.md](../CODING_STANDARDS.md) | 구현·데이터·환경·검증·정리·Git 기준 |
+| 이 문서 | 프로젝트 범위와 작업별 지침 연결 |
+| [DESIGN.md](../DESIGN.md) | 현재 UI 기준 |
+| `docs/instructions/` | 작업별 계약과 완료 기준 |
+| `docs/results/` | 실제 실행·검증 결과 |
+| [README.md](../README.md) | 사용자 실행 방법과 현재 기능 |
 
-구현되지 않은 기능은 결과 문서나 README에서 완료된 기능처럼 표현하지 않는다.
+## 13. 코드 위치
 
-## 13. 초기 디렉토리 구조
-
-```text
-boiler-ops-agent/
-├─ .project/
-│  └─ plan.md
-├─ frontend/
-├─ backend/
-│  ├─ app/
-│  │  ├─ api/
-│  │  ├─ domain/
-│  │  ├─ replay/
-│  │  ├─ streaming/
-│  │  └─ websocket/
-│  └─ tests/
-├─ data/
-│  └─ raw/
-├─ docs/
-│  ├─ instructions/
-│  └─ results/
-├─ artifacts/
-│  └─ e2e/
-├─ AGENTS.md
-├─ DESIGN.md
-├─ README.md
-├─ docker-compose.yml
-├─ .env.example
-└─ .gitignore
-```
-
-구체적인 Frontend Scene 하위 디렉토리와 패키지 구성은 Phase 1 구현 시 필요한 범위에서 확정한다.
-
-미래 Phase를 위한 빈 Interface나 Directory를 미리 만들지 않는다.
+실행 진입점은 루트 `package.json`, 로컬 실행은 `scripts/start.py`, API는 `backend/app/`, 화면은 `frontend/src/`다. 필요한 실제 파일만 확인하며 미래 기능의 빈 구조를 미리 만들지 않는다.
 
 ## 14. 품질 기준
 
-```text
-현실 데이터
-→ 요구사항 정의
-→ 구현
-→ E2E 검증
-→ Domain Validation
-→ Human Review
-→ 승인
-→ 회귀 검증
-```
-
-품질 판단 기준:
-
-- 데이터가 원본에서 UI까지 추적 가능한가
-- 원본 순서와 화면 순서가 검증 가능한가
-- 화면 Sensor 위치에 근거가 있는가
-- Scene Sensor와 Inspector가 같은 Source of Truth를 사용하는가
-- 실제 물리 위치와 논리 Scene 위치가 구분되는가
-- 임의 단위·임계값·설비 정보를 만들지 않았는가
-- 3D 표현이 실제 발전소 설계도로 오인되지 않는가
-- Agent 판단 근거가 Tool Result로 추적 가능한가
-- 쓰기 경계가 읽기 경계보다 강하게 통제되는가
-- 실패 결과를 재현할 수 있는 Trace와 E2E 아티팩트가 남는가
+원본 데이터의 시각·수치·품질과 AI 근거가 추적 가능해야 한다. 화면의 논리 위치를 실제 설치 위치로 설명하지 않으며, 실제 설비와 승인된 로컬 Simulator의 경계를 유지한다. 실행 결과는 `docs/results/`에 기록된 해당 버전의 검증 범위를 따른다.
 
 ## 15. 프로젝트 경계
 

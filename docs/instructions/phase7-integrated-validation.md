@@ -1,6 +1,6 @@
 # Phase 7 — Integrated E2E Validation
 
-실제 CSV/Kafka/API/브라우저/로컬 모델/SQLite 경계를 그대로 실행한다.
+전체 통합 경계를 검증할 때 실제 CSV/Kafka/API/브라우저/로컬 모델/SQLite를 실행한다. 개별 변경의 검증 범위는 [코딩 기준](../../CODING_STANDARDS.md)의 검증 절을 따른다.
 
 실패 주입:
 - 프로젝트 전용 Kafka 컨테이너 종료/복구와 이후 소비 재개.
@@ -13,4 +13,4 @@
 
 아티팩트에 실패 입력·관측 결과·검증 카운터를 저장한다.
 완료 기준: Unauthorized Write=0, Approval Bypass=0, Rejected Write Execution=0, Successful Write Trace Coverage=100%.
-토큰 등 자격 증명은 저장하지 않는다. 단위 테스트를 생성하지 않는다.
+토큰 등 자격 증명은 저장하지 않는다.
