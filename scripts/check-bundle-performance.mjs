@@ -5,10 +5,12 @@ import { dirname, extname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { chromium } from '../frontend/node_modules/playwright/index.mjs';
+import { inspect } from './review-ui.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'frontend/dist');
-const out = resolve(root, 'artifacts/e2e/bundle-performance');
+const brandReview = process.argv.includes('--brand');
+const out = resolve(root, 'artifacts/e2e', brandReview ? 'brand-theme' : 'bundle-performance');
 mkdirSync(out, { recursive: true });
 const result = { passed: false, fixture: 'Isolated synthetic API and telemetry; no backend or database', checks: [] };
 const html = readFileSync(resolve(dist, 'index.html'), 'utf8');
@@ -73,11 +75,24 @@ try {
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
     if (url.pathname === '/api/session') return json(authenticated ? { user_id: 'fixture-viewer', role: 'viewer' } : { detail: 'Login required' }, authenticated ? 200 : 401);
     if (url.pathname === '/api/registry') return json(registry);
-    if (url.pathname === '/api/forecast') return json({ detail: '격리 검증에서는 예측 모델을 실행하지 않습니다.' }, 409);
+    if (url.pathname === '/api/forecast') return brandReview ? json({ target: '재열기 시험 센서', unit: '°C', input_value: 114, prediction: 114.2,
+      selected_model: 'linear_ar', horizon_minutes: 5, forecast_time: '2026-01-01T00:05:11', advisory: '격리 UI 검증용 값입니다.', status: 'LIVE',
+      beats_naive_on_test: false, test: { naive: { mae: .03, rmse: .08, samples: 10 }, linear_ar: { mae: .1, rmse: .11, samples: 10 } } })
+      : json({ detail: '격리 검증에서는 예측 모델을 실행하지 않습니다.' }, 409);
     if (url.pathname === '/api/history/metadata') return json({ first_time: '2026-01-01T00:00:00', last_time: '2026-01-02T00:00:00', row_count: 86401, time_basis: 'Synthetic fixture', timezone_offset: null });
     if (url.pathname === '/api/simulator') return json({ value: 0, revision: 0, enabled: false, proposals: [] });
     if (url.pathname === '/api/simulator/audit') return json([]);
     if (url.pathname === '/api/sensors/history') return json({ tag: url.searchParams.get('tag'), unit: '°C', points: [] });
+    if (brandReview && url.pathname === '/api/history/range') {
+      const start = url.searchParams.get('start'), end = url.searchParams.get('end'), tag = url.searchParams.get('tag');
+      const baseValue = tag.includes('feeders') ? 100 : 110;
+      const startTime = Date.parse(start + 'Z'), duration = Date.parse(end + 'Z') - startTime;
+      const points = [0, 1, 2, 3].map(index => ({ source_row: index + 2,
+        source_time: new Date(startTime + duration * index / 3).toISOString().slice(0, 19),
+        raw: String(baseValue + index), value: baseValue + index, quality: 'valid', gap_before: false }));
+      return json({ tag, unit: '°C', start, end, points, original_count: 4, sample_count: 4,
+        valid_count: 4, missing_count: 0, parse_error_count: 0, min: baseValue, max: baseValue + 3, downsampled: false });
+    }
     throw new Error('Unexpected API request: ' + url.pathname);
   });
   const page = await context.newPage();
@@ -87,6 +102,13 @@ try {
   page.on('request', request => { const pathname = new URL(request.url()).pathname; if (pathname.endsWith('.js')) loadedScripts.add(pathname); });
   await page.goto(base);
   await page.getByRole('heading', { name: '운영 화면 로그인' }).waitFor();
+  if (brandReview) {
+    const colors = await page.evaluate(() => ({ background: getComputedStyle(document.body).backgroundColor,
+      text: getComputedStyle(document.body).color, scheme: getComputedStyle(document.documentElement).colorScheme }));
+    assert.deepEqual(colors, { background: 'rgb(9, 25, 35)', text: 'rgb(223, 234, 240)', scheme: 'dark' }, 'Brand tint reaches login, text and native controls');
+    await inspect(page, 'brand-login', out);
+    await page.screenshot({ path: resolve(out, 'login.png'), fullPage: true });
+  }
   assert.deepEqual([...loadedScripts], [entry]);
   result.checks.push('Login downloads only the entry script; 3D and optional panels stay deferred');
 
@@ -156,6 +178,47 @@ try {
   await page.keyboard.press('Escape');
   assert.ok([...loadedScripts].some(path => path.includes('WorkspacePanel-')));
   result.checks.push('Lazy drawer keeps an unsent question after closing and restores launcher focus');
+
+  if (brandReview) {
+    const acceptClose = dialog => dialog.accept();
+    page.on('dialog', acceptClose);
+    await page.keyboard.press('Escape');
+    await page.locator('#workspace-panel').waitFor({ state: 'hidden' });
+    page.off('dialog', acceptClose);
+    for (const name of ['공장 모니터링', '기간 조회', '승인 연습', '변경 기록']) {
+      await navigate(name);
+      const label = { '공장 모니터링': 'monitoring', '기간 조회': 'history', '승인 연습': 'simulator', '변경 기록': 'audit' }[name];
+      if (name === '기간 조회') {
+        await page.locator('.history-sensor-controls select').first().selectOption('feeders');
+        await page.getByRole('button', { name: '센서 추가', exact: false }).click();
+        await page.getByRole('button', { name: '기간 조회', exact: true }).click();
+        await page.getByTestId('history-chart').waitFor();
+        await page.getByTestId('history-chart').focus();
+        await page.keyboard.press('Home');
+        await page.getByTestId('history-tooltip').waitFor();
+        assert.equal(await page.locator('.history-series').count(), 2);
+      }
+      await inspect(page, 'brand-' + label, out);
+      await page.evaluate(() => window.scrollTo(0, 0));
+      await page.screenshot({ path: resolve(out, label + '.png'), fullPage: true });
+    }
+    await navigate('공장 모니터링');
+    await page.getByRole('button', { name: 'AI 도우미 열기' }).click();
+    await page.getByRole('tab', { name: '센서 상세', exact: true }).click();
+    await inspect(page, 'brand-sensor', out);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: resolve(out, 'sensor.png'), fullPage: true });
+    await page.getByRole('tab', { name: 'AI 질문', exact: true }).click();
+    await inspect(page, 'brand-chat', out);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.screenshot({ path: resolve(out, 'chat.png'), fullPage: true });
+    await page.keyboard.press('Escape');
+    await page.setViewportSize({ width: 375, height: 900 });
+    await inspect(page, 'brand-mobile', out);
+    await page.screenshot({ path: resolve(out, 'mobile.png'), fullPage: true });
+    await page.setViewportSize({ width: 1800, height: 1100 });
+    result.checks.push('Blue-tinted login, main views, chat and mobile preserve text contrast and reflow');
+  }
 
   await page.locator('canvas').evaluate(node => node.getContext('webgl2').getExtension('WEBGL_lose_context').loseContext());
   await page.getByText('3D 화면을 표시할 수 없습니다', { exact: true }).waitFor();

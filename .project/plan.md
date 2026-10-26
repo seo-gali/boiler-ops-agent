@@ -39,9 +39,12 @@
 | 한 명령 실행·키 재발급 | [로컬 실행](../docs/instructions/phase7-local-start.md) |
 | 공장·센서 선택·채팅·기간 조회 | [작업 화면](../docs/instructions/phase7-workspace.md) |
 | 렌더링·조회·자산 성능 | [성능 확인](../docs/instructions/phase7-workspace.md#성능-확인), [측정 기록](../docs/results/phase7-performance.md) |
+| Pages 정적 문서·검색 메타데이터 | [로컬 문서 생성·검증](../docs/local-development.md#github-pages-검색-노출) |
 | 지침·문서 정리 | [코딩 기준](../CODING_STANDARDS.md) |
 
 ### 현재 화면 범위
+
+공통 색상은 [디자인의 브랜드 색상](../DESIGN.md#브랜드-색상)을 따른다. 어두운 푸른 틴트를 앱·문서 표면과 본문에 적용하고 설비 구분·상태·선택의 의미와 조작은 보존한다.
 
 - 공장 모니터링에서 7개 논리 설비와 전체 118개 센서를 탐색한다. 주증기·발전 지표와 위치 미확인 센서는 그림의 설비와 구분한다.
 - 메인 메뉴는 공장 모니터링·기간 조회·승인 연습·변경 기록이다. 재열기 5분 예측은 공장 아래에 함께 표시한다.

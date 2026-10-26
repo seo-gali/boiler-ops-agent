@@ -8,7 +8,7 @@ type Metadata = { first_time: string | null; last_time: string | null; row_count
 type HistoryPoint = { source_row: number; source_time: string; raw: string; value: number | null; quality: 'valid' | 'missing' | 'parse_error'; gap_before: boolean };
 type HistoryRange = { tag: string; unit: string | null; start: string; end: string; original_count: number; sample_count: number; valid_count: number; missing_count: number; parse_error_count: number; min: number | null; max: number | null; downsampled: boolean; points: HistoryPoint[] };
 type ChartSeries = { data: HistoryRange; label: string; color: string };
-const colors = ['#356b49', '#245f93', '#9b4425', '#75519b', '#926318', '#24777a', '#9e426c'];
+const colors = Array.from({ length: 7 }, (_, index) => `var(--chart-${index + 1})`);
 const number = (value: number | null) => value == null ? '—' : value.toLocaleString('en-US', { maximumFractionDigits: 3 });
 const localInput = (value: string) => value.replace(' ', 'T').slice(0, 19);
 const wallTime = (value: string) => Date.parse(localInput(value) + 'Z');

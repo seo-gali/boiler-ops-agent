@@ -1,0 +1,4 @@
+# Google reads this policy only at https://seo-gali.github.io/robots.txt
+User-agent: *
+Allow: /
+Sitemap: https://seo-gali.github.io/boiler-ops-agent/sitemap.xml

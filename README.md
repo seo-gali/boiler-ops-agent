@@ -71,7 +71,7 @@ npm run start:reset-key
 
 AI 답변을 기다리는 동안 경과 시간이 표시됩니다. 취소하거나 오류 후 다시 조회할 수 있습니다. **X 또는 Esc**로 닫을 때 작성 중인 질문이나 조회가 있으면 먼저 확인합니다. 닫기를 승인하면 답변 기다림을 취소하지만 초안과 대화 기록은 남습니다. 다른 도우미 탭으로 옮기면 조회는 계속됩니다.
 
-아래는 이번 개정의 실제 검증 화면입니다. 빌드와 통합 E2E 13개 항목이 통과했으며 [검증 기록](docs/results/phase7-select-chat-compare.md)에 원본 대조와 급탄기 감사 결과를 남겼습니다.
+아래 캡처는 선택 상자·고정 채팅 개정 당시의 통합 검증 화면입니다. 현재 앱은 푸른 틴트 팔레트를 사용합니다. 해당 버전의 빌드·통합 E2E 13개 항목과 원본 대조·급탄기 감사 결과는 [검증 기록](docs/results/phase7-select-chat-compare.md)에서 확인할 수 있습니다.
 
 ![공장 지도에서 선택 상자로 설비와 센서를 탐색하는 화면](docs/images/select-workspace.jpg)
 
@@ -99,6 +99,7 @@ AI 답변을 기다리는 동안 경과 시간이 표시됩니다. 취소하거�
 | --- | --- |
 | 기능 흐름·코드 지도·구현 전 설계 | [그림으로 보는 프로젝트 지도](https://seo-gali.github.io/boiler-ops-agent/) |
 | 개발 서버를 따로 실행하는 방법 | [수동 개발 안내](docs/local-development.md) |
+| 정적 문서·사이트맵을 로컬에서 갱신하는 방법 | [문서 생성·검증](docs/local-development.md#github-pages-검색-노출) |
 | 실제 실행과 검수 결과 | [선택 상자·고정 채팅·다중 센서 비교 개정](docs/results/phase7-select-chat-compare.md) · [이전 공장 탐색·대화·기간 조회](docs/results/phase7-game-chat-history.md) · [이전 작업 화면·단위 근거](docs/results/phase7-workspace.md) · [실행 검증](docs/results/phase7-local-start.md) |
 | 접근성·보안 점검 | [접근성 검수](docs/results/phase7-ui-accessibility-review.md) · [보안 보완 결과](docs/results/phase7-security-hardening.md) |
 | 에이전트 작업 규칙 | [작업 진입점](AGENTS.md) · [코딩 기준](CODING_STANDARDS.md) |

@@ -1,10 +1,10 @@
 .sensor-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .sensor-detail .sensor-detail-heading h2 { margin: 0; min-width: 0; }
 .sensor-detail-heading .primary-button { flex: 0 0 auto; min-height: 38px; padding: 9px 12px; font-size: 12px; }
-.trend-window-note { color: #536653; font-size: 12px; line-height: 1.7; margin: 8px 0 12px; }
-.trend .trend-labels { gap: 12px; font-size: 11px; line-height: 1.6; flex-wrap: wrap; color: #536653; }
+.trend-window-note { color: var(--text-muted); font-size: 12px; line-height: 1.7; margin: 8px 0 12px; }
+.trend .trend-labels { gap: 12px; font-size: 11px; line-height: 1.6; flex-wrap: wrap; color: var(--text-muted); }
 .trend table { width: 100%; border-collapse: collapse; font-size: 12px; }
 .trend caption { text-align: left; line-height: 1.7; margin: 12px 0; }
-.trend th, .trend td { text-align: left; padding: 10px 7px; border-bottom: 1px solid #dce2da; overflow-wrap: anywhere; }
-.trend th { font-weight: 600; color: #405640; }
+.trend th, .trend td { text-align: left; padding: 10px 7px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
+.trend th { font-weight: 600; color: var(--text); }
 @media (max-width: 360px) { .sensor-detail-heading { gap: 8px; }.sensor-detail-heading .primary-button { padding: 8px 9px; font-size: 11px; }.trend table { font-size: 11px; } }

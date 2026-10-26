@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'node:http';
@@ -133,16 +133,23 @@ export async function reviewApplication(page, context, out = output) {
 async function reviewDocumentation() {
   mkdirSync(output, { recursive: true });
   const publicFiles = new Map([
+    ['/docs/brand.css', ['docs/brand.css', 'text/css']],
+    ['/docs/guide.css', ['docs/guide.css', 'text/css']],
+    ['/docs/favicon.svg', ['docs/favicon.svg', 'image/svg+xml']],
+    ['/docs/sitemap.xml', ['docs/sitemap.xml', 'application/xml']],
+    ['/docs/robots.txt', ['docs/robots.txt', 'text/plain']],
     ['/docs/index.html', ['docs/index.html', 'text/html; charset=utf-8']],
     ...['dashboard', 'login', 'simulator', 'agent-answer', 'workspace', 'ai-drawer', 'simulator-drawer', 'audit-drawer', 'workspace-mobile', 'game-workspace', 'game-ai-drawer', 'game-simulator-drawer', 'game-audit-drawer', 'game-workspace-mobile', 'chat-history', 'equipment-sensors', 'sensor-catalog', 'period-history', 'select-workspace', 'select-equipment-sensors', 'select-workspace-mobile', 'fixed-chat', 'compare-history', 'approval-workspace', 'approval-audit', 'fixed-chat-mobile'].map(name => [`/docs/images/${name}.jpg`, [`docs/images/${name}.jpg`, 'image/jpeg']]),
     ['/docs/fonts/pretendard.css', ['docs/fonts/pretendard.css', 'text/css']],
     ['/docs/fonts/PretendardVariable.woff2', ['docs/fonts/PretendardVariable.woff2', 'font/woff2']],
     ['/docs/404.html', ['docs/404.html', 'text/html; charset=utf-8']],
-    ['/frontend/public/favicon.svg', ['frontend/public/favicon.svg', 'image/svg+xml']],
   ]);
+  for (const name of readdirSync(resolve(root, 'docs/read')).filter(name => name.endsWith('.html'))) publicFiles.set('/docs/read/' + name, ['docs/read/' + name, 'text/html; charset=utf-8']);
+  for (const [url, entry] of [...publicFiles]) publicFiles.set(url.replace('/docs/', '/boiler-ops-agent/'), entry);
+  publicFiles.set('/boiler-ops-agent/', ['docs/index.html', 'text/html; charset=utf-8']);
   const server = createServer((request, response) => {
     const entry = publicFiles.get(new URL(request.url, 'http://localhost').pathname);
-    if (!entry) { response.writeHead(404); response.end(); return; }
+    if (!entry) { response.writeHead(404, { 'Content-Type': 'text/html; charset=utf-8' }); response.end(readFileSync(resolve(root, 'docs/404.html'))); return; }
     response.writeHead(200, { 'Content-Type': entry[1] });
     response.end(readFileSync(resolve(root, entry[0])));
   });
@@ -154,6 +161,25 @@ async function reviewDocumentation() {
   page.on('pageerror', error => errors.push(error.message));
   const results = { passed: false, checks: [] };
   try {
+    const noScript = await browser.newContext({ javaScriptEnabled: false, viewport: { width: 375, height: 900 } });
+    const staticPage = await noScript.newPage();
+    await staticPage.goto(base + 'index.html');
+    const featureData = JSON.parse(readFileSync(resolve(root, 'docs/feature-data.json'), 'utf8'));
+    for (const feature of Object.values(featureData)) await staticPage.getByRole('heading', { name: feature.title, exact: true }).waitFor();
+    await inspect(staticPage, 'docs-without-javascript-375', output);
+    await staticPage.getByText('공개 문서 전체 보기', { exact: true }).click();
+    await staticPage.getByRole('navigation', { name: '공개 문서' }).getByRole('link', { name: 'BoilerOps Agent', exact: true }).click();
+    assert.ok(staticPage.url().endsWith('/read/readme.html'));
+    await inspect(staticPage, 'docs-static-readme-375', output);
+    const missing = await staticPage.goto(new URL('/boiler-ops-agent/missing/deep/page', base).href);
+    assert.equal(missing.status(), 404);
+    await staticPage.getByRole('heading', { name: '문서를 찾을 수 없습니다', exact: true }).waitFor();
+    const assets = await staticPage.evaluate(() => [...document.querySelectorAll('link[rel="stylesheet"]')].map(link => link.href));
+    for (const asset of assets) assert.equal((await noScript.request.get(asset)).status(), 200);
+    await staticPage.getByRole('link', { name: '프로젝트 지도로 돌아가기' }).click();
+    assert.equal(new URL(staticPage.url()).pathname, '/boiler-ops-agent/');
+    await noScript.close();
+    results.checks.push('Without JavaScript, all code-map content and document links work; a deep 404 keeps status, styles and project-root recovery');
     for (const name of ['index.html', '404.html']) {
       const file = resolve(root, 'docs', name);
       await page.goto(base + name);

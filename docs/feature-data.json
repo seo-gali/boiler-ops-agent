@@ -1,0 +1,240 @@
+{
+  "telemetry": {
+    "title": "CSV의 원본값이 화면의 숫자가 되기까지",
+    "description": "원본 문자열을 서버에서 검증하고, 같은 상태를 화면과 이력에 전달합니다.",
+    "steps": [
+      [
+        "원본 재생",
+        "run_id · sequence",
+        "backend/app/replay/producer.py",
+        "producer.py"
+      ],
+      [
+        "수신·검증",
+        "Tag · 순서 · quality",
+        "backend/app/domain/state.py",
+        "state.py"
+      ],
+      [
+        "화면 반영",
+        "WebSocket · 선택 센서",
+        "frontend/src/telemetry.ts",
+        "telemetry.ts"
+      ]
+    ],
+    "contract": [
+      "ReplayEvent { run_id, sequence, emitted_at, measurements }",
+      "BoilerState.apply(event, offset) → Reading { value, raw, quality }",
+      "Hub.publish(snapshot) → useReading(tag) → Inspector"
+    ],
+    "sources": [
+      "backend/app/streaming/consumer.py",
+      "backend/app/main.py",
+      "backend/app/domain/registry.py",
+      "backend/app/domain/sensor_definitions.json",
+      "scripts/dataset_path.py",
+      "frontend/src/App.tsx"
+    ]
+  },
+  "agent": {
+    "title": "고정된 채팅에서 질문하고, 원본 근거로 답변하기",
+    "description": "대화 안 예시와 메시지를 읽고 하단 입력에서 Enter로 보냅니다. 각 질문은 고정한 센서의 독립 조회이며, 이전 대화를 모델이 자동으로 기억하지 않습니다.",
+    "steps": [
+      [
+        "고정 대화·하단 입력",
+        "Enter 전송 · Shift+Enter 줄바꿈",
+        "frontend/src/AgentPanel.tsx",
+        "AgentPanel.tsx"
+      ],
+      [
+        "조회 도구",
+        "고정된 관측 Snapshot",
+        "backend/app/agent/tools.py",
+        "ReadTools"
+      ],
+      [
+        "근거 선택·기록",
+        "모델 선택 · Trace",
+        "backend/app/agent/service.py",
+        "query_agent"
+      ],
+      [
+        "결론 구성",
+        "근거 부족이면 판단 보류",
+        "backend/app/agent/answers.py",
+        "compose_answer"
+      ]
+    ],
+    "contract": [
+      "AgentQuery { question, equipment, tag } + Principal",
+      "ChatTurn { question, tag, status, answer, elapsed } → 고정 영역에 누적",
+      "ToolPlan { intents, tools } → Findings { evidence_ids }",
+      "compose_answer(intents, evidence, tag, status) → 결론·설명·한계",
+      "Trace { model_plan, model_findings, answer_gaps, elapsed_ms }"
+    ],
+    "sources": [
+      "backend/app/security.py",
+      "backend/app/agent/traces.py",
+      "frontend/src/chat.css"
+    ],
+    "report": "docs/results/phase7-select-chat-compare.md",
+    "reportLabel": "이번 고정 채팅 개정·검증 기록 ↗"
+  },
+  "simulator": {
+    "title": "유효한 근거로 제안하고, 본인이 확인해 승인",
+    "description": "운영자가 자신의 Trace와 제안만 다룹니다. 실제 발전설비와 연결되지 않은 데모 상태입니다.",
+    "steps": [
+      [
+        "근거 검사",
+        "소유자 · 나이 · 재생 세션",
+        "backend/app/simulator/service.py",
+        "evidence"
+      ],
+      [
+        "제안 저장",
+        "단일 사용 · pending",
+        "backend/app/simulator/service.py",
+        "propose"
+      ],
+      [
+        "사람의 확인",
+        "revision · Audit",
+        "frontend/src/SimulatorPanel.tsx",
+        "SimulatorPanel.tsx"
+      ]
+    ],
+    "contract": [
+      "ProposalRequest { source_trace_id, intent } + Principal",
+      "Simulator.propose(request, principal) → pending Proposal",
+      "Decision { approve, confirm, expected_revision }",
+      "Simulator.decide(id, decision, principal) → Receipt + Audit"
+    ],
+    "sources": [
+      "backend/app/main.py",
+      "backend/app/security.py",
+      "frontend/src/RecordsPanel.tsx"
+    ]
+  },
+  "workspace": {
+    "title": "설비·묶음·선택 상자로 118개 센서 둘러보기",
+    "description": "설비 옆에서는 선택 상자와 센서 상태 목록을 함께 봅니다. 오른쪽 상세에는 묶음 버튼과 센서 선택을 두고 중복 검색을 제거했습니다. AI 대화는 탐색과 독립적으로 유지합니다.",
+    "steps": [
+      [
+        "공장·상태 목록",
+        "묶음 select · 센서 select",
+        "frontend/src/EquipmentSensors.tsx",
+        "EquipmentSensors.tsx"
+      ],
+      [
+        "설비·묶음·센서 선택",
+        "전체 118개 분류",
+        "frontend/src/SensorPicker.tsx",
+        "SensorPicker.tsx"
+      ],
+      [
+        "상세·최근 2분",
+        "원본 120초 · 질문 행동",
+        "frontend/src/SensorTrend.tsx",
+        "SensorTrend.tsx"
+      ],
+      [
+        "대화·닫기 확인",
+        "초안·조회 보호 · X",
+        "frontend/src/WorkspacePanel.tsx",
+        "WorkspacePanel.tsx"
+      ]
+    ],
+    "contract": [
+      "7개 그룹 110 + main-steam 5 + generation 2 + unmapped 1 = 118",
+      "sensorArea(sensor) → 원본 이름 세부 묶음; 설치 좌표는 미확인",
+      "SensorPicker → 설비 select · 묶음 버튼 · 센서 select",
+      "App.selected → 탐색 센서; Workspace.questionTag → 질문 대상",
+      "SensorTrend → 최신 원본 시각에서 120초 이내; 경계 포함 3관측 가능",
+      "닫기 확인 승인 → 대기 취소; 초안·대화 보존; 탭 이동은 조회 계속",
+      "기본 title 제거; 기능명·접근 가능한 이름·키보드 포커스 유지"
+    ],
+    "sources": [
+      "backend/app/domain/registry.py",
+      "frontend/src/BoilerScene.tsx",
+      "frontend/src/sensor-catalog.ts",
+      "frontend/src/SensorInspector.tsx",
+      "frontend/src/App.tsx",
+      "frontend/src/game-scene.css",
+      "frontend/src/workspace.css"
+    ],
+    "report": "docs/results/phase7-select-chat-compare.md",
+    "reportLabel": "이번 센서 선택·급탄기 감사 기록 ↗"
+  },
+  "history": {
+    "title": "여러 센서의 같은 기간을 원본값으로 비교",
+    "description": "설비와 센서를 골라 추가합니다. 같은 단위는 색상으로 비교하고 다른 단위는 그래프를 나눕니다. 마우스·터치·방향키로 원본 관측값을 확인하며 결측은 연결하지 않습니다.",
+    "steps": [
+      [
+        "설비·다중 센서 선택",
+        "추가·제외 칩 · 공통 기간",
+        "frontend/src/OperationsAnalysis.tsx",
+        "OperationsAnalysis.tsx"
+      ],
+      [
+        "인증된 읽기 전용 API",
+        "센서별 metadata · range",
+        "backend/app/main.py",
+        "history routes"
+      ],
+      [
+        "원본 행 조회",
+        "raw · quality · gap_before",
+        "backend/app/domain/history.py",
+        "query_range"
+      ]
+    ],
+    "contract": [
+      "GET /api/history/metadata → first_time · last_time · row_count · time_basis",
+      "GET /api/history/range?tag&start&end → 센서별 실제 원본 관측점",
+      "HistoryRange { original_count, sample_count, missing_count, downsampled, points }",
+      "Point { source_row, source_time, raw, value, quality, gap_before }",
+      "동일 단위 → 같은 축·색상 비교; 다른 단위·미확인 단위 → 별도 그래프",
+      "상세 값 → 실제 원본 시각·값·품질·행; 마우스·터치·방향키",
+      "센서별 실패·빈 결과 표시; 보간·임의 환산·결측 연결 없음"
+    ],
+    "sources": [
+      "frontend/src/history.css",
+      "backend/app/security.py",
+      "frontend/src/types.ts"
+    ],
+    "report": "docs/results/phase7-select-chat-compare.md",
+    "reportLabel": "이번 다중 센서 기간 비교 기록 ↗"
+  },
+  "forecast": {
+    "title": "미래 데이터를 보지 않고 5분 뒤를 평가",
+    "description": "공장 지도 아래에서 현재 온도와 5분 예측을 함께 봅니다. 시간순 학습·검증·시험을 나누고 Naive와 선형 모델을 같은 시험 구간에서 비교합니다.",
+    "steps": [
+      [
+        "시간순 분리",
+        "학습 → 검증 → 시험",
+        "backend/app/forecast/train.py",
+        "train.py"
+      ],
+      [
+        "서버 추론",
+        "cutoff · 데이터 해시",
+        "backend/app/forecast/service.py",
+        "forecast"
+      ],
+      [
+        "화면·AI 조회",
+        "추론값과 평가 결과",
+        "frontend/src/ForecastPanel.tsx",
+        "ForecastPanel.tsx"
+      ]
+    ],
+    "contract": [
+      "train() → ModelReport { selected, validation, test, cutoffs }",
+      "forecast(state) → { prediction, horizon_minutes, source_time }",
+      "ReadTools.call(\"get_temperature_forecast\") → 동일한 예측"
+    ],
+    "sources": [
+      "docs/results/phase5-temperature-forecast.md"
+    ]
+  }
+}

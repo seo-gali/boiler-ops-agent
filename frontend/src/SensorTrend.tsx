@@ -59,7 +59,7 @@ export const SensorTrend = memo(function SensorTrend({ tag, unit }: { tag: strin
   return <div className="trend" data-testid="sensor-trend" data-window-seconds="120">
     <span className="eyebrow">최근 2분 · {points.length}개 관측</span>
     {error ? <p role="alert">{error}</p> : valid.length ? <>
-      <svg viewBox="0 0 260 80" role="img" aria-label={`${tag} 최근 2분 추이`} aria-describedby={descriptionId}><path d="M5 70H255" stroke="#dbe2d7" />{paths.map((path, i) => <path key={i} d={path} fill="none" stroke="#4b7859" strokeWidth="2" />)}{valid.map(point => { const { x, y } = position(point); return <circle key={point.sequence} cx={x} cy={y} r="2.4" fill="#4b7859" />; })}</svg>
+      <svg viewBox="0 0 260 80" role="img" aria-label={`${tag} 최근 2분 추이`} aria-describedby={descriptionId}><path d="M5 70H255" stroke="var(--border)" />{paths.map((path, i) => <path key={i} d={path} fill="none" stroke="var(--chart-1)" strokeWidth="2" />)}{valid.map(point => { const { x, y } = position(point); return <circle key={point.sequence} cx={x} cy={y} r="2.4" fill="var(--chart-1)" />; })}</svg>
       <p id={descriptionId} className="note">유효 관측 {valid.length}개, 최솟값 {min}, 최댓값 {max}. 결측·파싱 오류 구간은 연결하지 않습니다.</p>
     </> : <p className="quiet">최근 2분에 유효한 관측값이 없습니다. 결측값을 보간하지 않습니다.</p>}
     <p className="trend-window-note">최신 원본 시각 기준 120초만 표시합니다. 분 단위 자료는 경계값을 포함해 최대 3개 관측이 보입니다.</p>

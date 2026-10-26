@@ -1,45 +1,45 @@
-.game-viewport { container-type: inline-size; border: 2px solid #466485; border-radius: 18px; overflow: hidden; background: #fffef8; box-shadow: 0 6px 0 #213f6320; }
-.game-viewport > .panel-heading { background: #eff7ff; border-bottom: 1px solid #cedfec; padding-block: 17px; }
-.game-viewport > .panel-heading h2 { color: #294965; font-size: 20px; font-weight: 750; }
-.game-viewport > .panel-heading .eyebrow { color: #496780; font-size: 10px; letter-spacing: 1.7px; }
-.game-viewport > .panel-heading .quiet { color: #536b7c; }
-.game-viewport .equipment-nav { background: #fffef8; gap: 8px; padding: 13px 14px 9px; }
-.game-viewport .equipment-nav button { border: 1px solid color-mix(in srgb, var(--equip-color), #fff 55%); border-radius: 10px; background: var(--equip-pale); box-shadow: 0 3px 0 color-mix(in srgb, var(--equip-color), transparent 78%); color: var(--equip-color); transition: transform .15s ease, box-shadow .15s ease; }
+.game-viewport { container-type: inline-size; border: 2px solid var(--border-control); border-radius: 18px; overflow: hidden; background: var(--surface); box-shadow: 0 6px 0 var(--shadow-soft); }
+.game-viewport > .panel-heading { background: var(--surface-soft); border-bottom: 1px solid var(--border-control); padding-block: 17px; }
+.game-viewport > .panel-heading h2 { color: var(--text); font-size: 20px; font-weight: 750; }
+.game-viewport > .panel-heading .eyebrow { color: var(--text-muted); font-size: 10px; letter-spacing: 1.7px; }
+.game-viewport > .panel-heading .quiet { color: var(--text-muted); }
+.game-viewport .equipment-nav { background: var(--surface); gap: 8px; padding: 13px 14px 9px; }
+.game-viewport .equipment-nav button { border: 1px solid color-mix(in srgb, var(--equip-color), var(--border-control) 55%); border-radius: 10px; background: var(--equip-pale); box-shadow: 0 3px 0 color-mix(in srgb, var(--equip-color), transparent 78%); color: var(--text); transition: transform .15s ease, box-shadow .15s ease; }
 .game-viewport .equipment-nav button .equipment-game-icon { grid-row: 1 / 3; font-size: 24px; line-height: 1; font-weight: 700; color: var(--equip-color); }
-.game-viewport .equipment-nav button small { color: #4d6273; }
+.game-viewport .equipment-nav button small { color: var(--text-muted); }
 .game-viewport .equipment-nav button:hover { transform: translateY(-2px); background: var(--equip-pale); border-color: var(--equip-color); box-shadow: 0 5px 0 color-mix(in srgb, var(--equip-color), transparent 70%); }
-.game-viewport .equipment-nav button[aria-pressed=true] { color: var(--equip-color); background: var(--equip-pale); border: 2px solid var(--equip-color); box-shadow: 0 3px 0 var(--equip-color); padding: 8px 7px; }
-.game-viewport .equipment-description { color: #53697a; padding-bottom: 8px; }
-.game-viewport .scene-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 10px; margin: 0 14px 10px; padding: 10px 12px; background: #eef5ff; border: 1px solid #b9cce3; border-radius: 10px; color: #28486b; font-size: 12px; }
-.game-viewport .scene-selection-path { font-size: 10px; color: #456987; background: #d9e8f8; padding: 3px 7px; border-radius: 5px; }
+.game-viewport .equipment-nav button[aria-pressed=true] { color: var(--text); background: var(--equip-pale); border: 2px solid var(--equip-color); box-shadow: 0 3px 0 var(--equip-color); padding: 8px 7px; }
+.game-viewport .equipment-description { color: var(--text-muted); padding-bottom: 8px; }
+.game-viewport .scene-selection { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 10px; margin: 0 14px 10px; padding: 10px 12px; background: var(--surface-soft); border: 1px solid var(--border-control); border-radius: 10px; color: var(--text); font-size: 12px; }
+.game-viewport .scene-selection-path { font-size: 10px; color: var(--text-muted); background: var(--surface-selected); padding: 3px 7px; border-radius: 5px; }
 .game-viewport .scene-selection strong { line-height: 1.5; font-size: 12px; }
 .game-viewport .scene-selection b { font-size: 18px; white-space: nowrap; }
 .game-viewport .scene-selection b small { font-size: 11px; font-weight: 500; }
-.game-viewport .scene-selection-time { font-size: 10px; color: #516b83; }
-.game-viewport .scene-selection button { margin-left: auto; padding: 5px 9px; min-height: 32px; border: 1px solid #9ab4d0; border-radius: 7px; color: #315d86; background: #fff; font-size: 11px; }
-.game-viewport .scene-help { background: #f4f9ff; color: #516b83; font-size: 10px; padding-block: 8px; }
-.game-scene-shell { display: grid; grid-template-columns: minmax(0, 1fr); padding: 10px; gap: 10px; background: #e4f3fa; align-items: start; }
+.game-viewport .scene-selection-time { font-size: 10px; color: var(--text-muted); }
+.game-viewport .scene-selection button { margin-left: auto; padding: 5px 9px; min-height: 32px; border: 1px solid var(--border-control); border-radius: 7px; color: var(--text-muted); background: var(--surface); font-size: 11px; }
+.game-viewport .scene-help { background: var(--surface-soft); color: var(--text-muted); font-size: 10px; padding-block: 8px; }
+.game-scene-shell { display: grid; grid-template-columns: minmax(0, 1fr); padding: 10px; gap: 10px; background: var(--surface-soft); align-items: start; }
 .game-scene-shell.has-equipment-popup { grid-template-columns: minmax(0, 1fr) 290px; }
-.game-viewport .scene { border: 1px solid #b4cad2; border-radius: 14px; overflow: hidden; background: #e4f3fa; height: 620px; }
+.game-viewport .scene { border: 1px solid var(--border-control); border-radius: 14px; overflow: hidden; background: var(--surface-soft); height: 620px; }
 .game-viewport .scene.compact-markers { height: 700px; }
-.game-viewport .scene-marker { background: #fffef7f5; border: 1px solid color-mix(in srgb, var(--equip-color), #fff 65%); border-top: 4px solid var(--equip-color); border-radius: 10px; box-shadow: 0 3px 0 color-mix(in srgb, var(--equip-color), transparent 82%), 0 5px 12px #31495616; }
-.game-viewport .scene-marker .marker-name { color: var(--equip-color); font-weight: 750; }
-.game-viewport .scene-marker b { color: #2f4353; font-size: 20px; }
-.game-viewport .scene-marker b em, .game-viewport .scene-marker small { color: #536777; }
-.game-viewport .scene-marker .marker-state { color: #5b6f7d; }
+.game-viewport .scene-marker { background: var(--surface-float); border: 1px solid color-mix(in srgb, var(--equip-color), var(--border-control) 65%); border-top: 4px solid var(--equip-color); border-radius: 10px; box-shadow: 0 3px 0 color-mix(in srgb, var(--equip-color), transparent 82%), 0 5px 12px var(--shadow-soft); }
+.game-viewport .scene-marker .marker-name { color: var(--text); font-weight: 750; }
+.game-viewport .scene-marker b { color: var(--text); font-size: 20px; }
+.game-viewport .scene-marker b em, .game-viewport .scene-marker small { color: var(--text-muted); }
+.game-viewport .scene-marker .marker-state { color: var(--text-muted); }
 .game-viewport .scene-marker.equipment-selected { background: var(--equip-pale); border-color: var(--equip-color); border-top-color: var(--equip-color); box-shadow: 0 3px 0 var(--equip-color); }
-.game-viewport .scene-marker.selected { background: #fff6d6; border-color: #947623; border-top-color: var(--equip-color); box-shadow: 0 3px 0 #b08d2d; }
-.game-viewport .scene-marker.selected .marker-name i, .game-viewport .scene-marker.selected .marker-state { color: #775c15; }
+.game-viewport .scene-marker.selected { background: var(--surface-selected); border-color: var(--accent); border-top-color: var(--equip-color); box-shadow: 0 3px 0 var(--shadow-soft); }
+.game-viewport .scene-marker.selected .marker-name i, .game-viewport .scene-marker.selected .marker-state { color: var(--text-muted); }
 .game-viewport .scene-marker:hover { background: var(--equip-pale); border-color: var(--equip-color); box-shadow: 0 4px 0 color-mix(in srgb, var(--equip-color), transparent 40%); }
-.game-viewport .scene-tools { background: #fffef8ed; border: 1px solid #a9bfd4; border-radius: 9px; box-shadow: 0 3px 0 #35547924; }
-.game-viewport .scene-tools button { color: #345b80; }
-.game-viewport .scene-tools button:hover { background: #e6f0fb; }
-.game-viewport .scene-flow-caption { background: #f4f8fc; border-color: #c8d8e8; }
-.game-viewport .scene-flow-caption p { color: #4f6b81; }
-.game-viewport .scene-flow-caption b { color: #315b80; }
-.game-viewport .scene-flow-caption p::before { content: ''; width: 16px; height: 4px; align-self: center; border-radius: 4px; background: #b97b43; }
-.game-viewport .scene-flow-caption p:nth-child(2)::before { background: #398aa6; }
-.game-viewport .scene-mode { padding: 6px 9px; border-radius: 7px; background: #fffdf1ed; color: #315b80; }
+.game-viewport .scene-tools { background: var(--surface-float); border: 1px solid var(--border-control); border-radius: 9px; box-shadow: 0 3px 0 var(--shadow-soft); }
+.game-viewport .scene-tools button { color: var(--text-muted); }
+.game-viewport .scene-tools button:hover { background: var(--surface-soft); }
+.game-viewport .scene-flow-caption { background: var(--surface-soft); border-color: var(--border-control); }
+.game-viewport .scene-flow-caption p { color: var(--text-muted); }
+.game-viewport .scene-flow-caption b { color: var(--text-muted); }
+.game-viewport .scene-flow-caption p::before { content: ''; width: 16px; height: 4px; align-self: center; border-radius: 4px; background: var(--chart-3); }
+.game-viewport .scene-flow-caption p:nth-child(2)::before { background: var(--chart-1); }
+.game-viewport .scene-mode { padding: 6px 9px; border-radius: 7px; background: var(--surface); color: var(--text-muted); }
 .game-viewport .scene-mode:empty { display: none; }
 @container (max-width: 900px) {
   .game-scene-shell.has-equipment-popup { grid-template-columns: minmax(0, 1fr); }

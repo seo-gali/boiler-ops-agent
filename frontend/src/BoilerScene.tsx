@@ -13,16 +13,18 @@ type Pan = { x: number; y: number };
 type Point = { tag: string; x: number; y: number; equipmentX: number; equipmentY: number };
 type LabelSlot = { x: number; y: number; width: number; height: number };
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
-const equipmentColors: Record<string, { body: string; dark: string; pale: string; icon: string }> = {
-  feeders: { body: '#f3ba55', dark: '#966126', pale: '#fff1d1', icon: '▰' },
-  furnace: { body: '#f3916d', dark: '#9d4d3c', pale: '#ffe9df', icon: '♨' },
-  superheater: { body: '#53b8e2', dark: '#286982', pale: '#e1f5ff', icon: '≋' },
-  reheater: { body: '#a896e8', dark: '#645096', pale: '#f0eaff', icon: '∞' },
-  economizer: { body: '#70cbb6', dark: '#2e7464', pale: '#e0faf1', icon: '▤' },
-  scr: { body: '#b2c773', dark: '#5f7130', pale: '#f1f6dc', icon: '✧' },
-  stack: { body: '#89aec8', dark: '#446b89', pale: '#e7f2fa', icon: '▥' },
+const equipmentColors: Record<string, { body: string; dark: string; icon: string }> = {
+  feeders: { body: '#f3ba55', dark: '#966126', icon: '▰' },
+  furnace: { body: '#f3916d', dark: '#9d4d3c', icon: '♨' },
+  superheater: { body: '#53b8e2', dark: '#286982', icon: '≋' },
+  reheater: { body: '#a896e8', dark: '#645096', icon: '∞' },
+  economizer: { body: '#70cbb6', dark: '#2e7464', icon: '▤' },
+  scr: { body: '#b2c773', dark: '#5f7130', icon: '✧' },
+  stack: { body: '#89aec8', dark: '#446b89', icon: '▥' },
 };
-const equipmentStyle = (id: string) => ({ '--equip-color': equipmentColors[id]?.dark ?? '#355479', '--equip-pale': equipmentColors[id]?.pale ?? '#edf4ff' }) as CSSProperties;
+const equipmentStyle = (id: string) => ({ '--equip-color': equipmentColors[id]?.body ?? 'var(--accent)', '--equip-pale': 'var(--surface-selected)' }) as CSSProperties;
+const theme = getComputedStyle(document.documentElement);
+const scenePalette = Object.fromEntries(['page', 'surface', 'surface-soft', 'surface-selected', 'border', 'border-control', 'text', 'accent'].map(name => [name, theme.getPropertyValue(`--${name}`).trim()]));
 
 function labelSlots(count: number, width: number, height: number): LabelSlot[] {
   const compact = width < 650, gap = 10, inset = 14;
@@ -54,7 +56,7 @@ const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onS
   const colors = equipmentColors[item.id] ?? equipmentColors.stack;
   const body = <meshStandardMaterial color={colors.body} roughness={.65} emissive={colors.body} emissiveIntensity={hovered ? .18 : .02} />;
   const frame = <meshStandardMaterial color={colors.dark} roughness={.65} />;
-  const trim = <meshStandardMaterial color="#fff8e7" roughness={.6} />;
+  const trim = <meshStandardMaterial color={scenePalette.text} roughness={.6} />;
   let shape: ReactNode;
   if (item.id === 'feeders') {
     shape = <>
@@ -105,8 +107,8 @@ const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onS
   }
   return <group position={[x, hovered ? .09 : 0, z]} onClick={event => { event.stopPropagation(); onSelect(item.id); }} onPointerOver={event => { event.stopPropagation(); onHover(item.id); }} onPointerOut={() => onHover(null)}>
     {shape}
-    <mesh position={[0, .04, 0]} receiveShadow><boxGeometry args={[w + .65, .13, d + .65]} /><meshStandardMaterial color={selected ? '#fff3aa' : '#f3f2de'} /></mesh>
-    {selected && <mesh position={[0, .13, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[Math.max(w, d) * .7, Math.max(w, d) * .7 + .12, 40]} /><meshBasicMaterial color="#eabb39" /></mesh>}
+    <mesh position={[0, .04, 0]} receiveShadow><boxGeometry args={[w + .65, .13, d + .65]} /><meshStandardMaterial color={selected ? scenePalette['border-control'] : scenePalette['surface-selected']} /></mesh>
+    {selected && <mesh position={[0, .13, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[Math.max(w, d) * .7, Math.max(w, d) * .7 + .12, 40]} /><meshBasicMaterial color={scenePalette.accent} /></mesh>}
   </group>;
 });
 
@@ -188,13 +190,13 @@ const SceneCanvas = memo(function SceneCanvas({ registry, selected, selectedEqui
   const fallback = <SceneFallback />;
   return <SceneBoundary fallback={fallback}><Canvas orthographic camera={{ position: [14, 12, 17], near: .1, far: 100 }} shadows frameloop={animate ? 'always' : 'demand'} fallback={fallback} onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); onLost(true); }); }}>
     <SceneCamera zoom={zoom} pan={pan} markers={markers} equipment={registry.equipment} scale={cameraScale} onProject={onProject} />
-    <color attach="background" args={['#e4f3fa']} /><ambientLight intensity={1.8} /><directionalLight position={[5, 12, 6]} intensity={2.2} castShadow />
-    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.07, 0]} receiveShadow><planeGeometry args={[30, 28]} /><meshStandardMaterial color="#c9dfb1" /></mesh>
-    <mesh position={[0, -.06, .5]} receiveShadow><boxGeometry args={[22, .12, 20]} /><meshStandardMaterial color="#dfe9cb" /></mesh>
-    <gridHelper position={[0, .01, 0]} args={[24, 12, '#acbd99', '#c1d0b0']} />
+    <color attach="background" args={[scenePalette.page]} /><ambientLight intensity={1.8} /><directionalLight position={[5, 12, 6]} intensity={2.2} castShadow />
+    <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.07, 0]} receiveShadow><planeGeometry args={[30, 28]} /><meshStandardMaterial color={scenePalette.surface} /></mesh>
+    <mesh position={[0, -.06, .5]} receiveShadow><boxGeometry args={[22, .12, 20]} /><meshStandardMaterial color={scenePalette['surface-soft']} /></mesh>
+    <gridHelper position={[0, .01, 0]} args={[24, 12, scenePalette['border-control'], scenePalette.border]} />
     {registry.flows.map((flow, index) => <FlowDecoration key={flow.id} flow={flow} equipment={registry.equipment} index={index} animate={animate} />)}
     {registry.equipment.map(item => <EquipmentMesh key={item.id} item={item} selected={selectedEquipment === item.id} hovered={hovered === item.id} onSelect={onEquipment} onHover={onHover} />)}
-    {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); onSensor(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? '#d39b21' : equipmentColors[sensor.equipment]?.dark ?? '#355479'} /></mesh>)}
+    {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); onSensor(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? scenePalette.accent : equipmentColors[sensor.equipment]?.body ?? scenePalette.text} /></mesh>)}
   </Canvas></SceneBoundary>;
 });
 SceneCanvas.displayName = 'SceneCanvas';

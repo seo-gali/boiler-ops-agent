@@ -285,7 +285,29 @@ Remove-Item Env:E2E_AGENT_REVIEW
 
 ```powershell
 uv run python scripts/build-guide.py
+uv run python scripts/check-pages-seo.py
 node scripts/review-ui.mjs
 ```
 
-문서 코드·결과를 수정했다면 첫 명령으로 브라우저 내 상세 보기 데이터를 갱신하고 두 번째로 문서 메뉴·링크·모바일·키보드를 확인합니다. 실제 NVDA·VoiceOver 낭독 검수는 별도 작업입니다.
+문서 코드·결과를 수정했다면 위 순서로 문서를 재생성하고 정적 HTML·링크·사이트맵, JavaScript 없는 화면·404·모바일·키보드를 검증합니다. 실제 NVDA·VoiceOver 낭독 검수는 별도 작업입니다.
+
+## GitHub Pages 검색 노출
+
+사이트 주소는 `https://seo-gali.github.io/boiler-ops-agent/`입니다. Pages는 정적 호스팅이므로 기존 Python 빌드에서 HTML을 생성하는 SSG를 사용합니다. 이 절은 문서의 로컬 생성·검증 방법을 다룹니다.
+
+`scripts/build-guide.py`를 실행하면 코드 지도·공개 Markdown의 `read/*.html`·대표 URL·`sitemap.xml`을 함께 갱신합니다. 사이트맵에는 생성한 정규 HTML URL만 넣고 404·중복 index URL·팝업용 소스·인증 앱을 제외합니다. 실제 수정 시각을 확인할 수 없는 `lastmod`는 넣지 않습니다. 공개 문서만 기존 허용 목록에서 생성하며 원본 데이터·시크릿을 포함하지 않습니다.
+
+| 원본·생성물 | 역할 |
+| --- | --- |
+| `docs/feature-data.json` | 6개 코드 지도의 제목·흐름·계약 원본 |
+| `docs/index.html` | 홈 템플릿과 빌더가 갱신하는 코드 지도·문서 목록·팝업 데이터 |
+| `docs/brand.css`, `docs/guide.css` | 공통 색상과 안내 페이지·정적 문서 스타일 |
+| `docs/read/*.html` | 빌더의 허용 목록에 포함된 공개 Markdown의 정적 본문 |
+| `docs/sitemap.xml`, `docs/robots.txt` | 빌드에서 갱신하는 검색 메타데이터·루트 정책 사본 |
+| `docs/favicon.svg` | `frontend/public/favicon.svg`에서 복사하는 아이콘 |
+
+홈 레이아웃·동작과 CSS는 원본에서 수정합니다. 코드 지도는 `feature-data.json`, 문서 본문은 Markdown을 수정한 뒤 생성 명령을 실행합니다. `index.html`의 생성 블록·`read/`·검색 파일은 직접 수정하지 않습니다. 문서 본문은 정적 URL에서 읽고, 홈의 기존 문서·소스 버튼은 같은 페이지의 팝업으로 읽습니다.
+
+Google이 정책으로 읽는 위치는 도메인 루트의 `https://seo-gali.github.io/robots.txt`입니다. 이 프로젝트 경로의 사본은 루트 정책을 바꾸지 않습니다. 루트 robots의 404 응답은 크롤링 금지를 뜻하지 않습니다.
+
+로컬 검증은 생성 HTML의 색인 차단 태그·대표 URL·내부 링크·사이트맵과 JavaScript 없는 열람·중첩 404를 확인합니다. 실제 호스팅의 HTTP 헤더·색인 상태를 검증한 결과로 간주하지 않습니다.
