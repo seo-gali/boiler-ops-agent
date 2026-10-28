@@ -40,6 +40,25 @@
 .workspace-panel .agent-chat textarea:focus-visible { outline: none; }
 .agent-chat .chat-send { width: 40px; height: 40px; flex-shrink: 0; padding: 0; border-radius: 10px; font-size: 24px; line-height: 1; }
 .agent-chat .chat-input-hint { color: var(--text-muted); font-size: 10px; margin: 5px 8px 0; }
+.chat-exploration { flex-shrink: 0; min-width: 0; }
+.agent-chat .chat-explorer { width: 100%; max-width: 100%; }
+.chat-explorer h3 { font-size: 14px; margin: 10px 0; }
+.explorer-path, .explorer-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.explorer-path { font-size: 11px; color: var(--text-muted); }
+.explorer-path button { font: inherit; color: var(--text); border: 0; border-radius: 4px; background: var(--surface-soft); padding: 6px; }
+.explorer-path [aria-current=step] { color: var(--accent); }
+.explorer-choices { display: grid; gap: 6px; }
+.explorer-choices button { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; text-align: left; font-size: 12px; padding: 10px; border: 1px solid var(--border); background: var(--surface-soft); border-radius: 8px; overflow-wrap: anywhere; }
+.explorer-choices small { display: block; color: var(--text-muted); font-size: 10px; font-weight: 400; }
+.explorer-choices b { text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.explorer-sensor .explorer-value { display: flex; flex-wrap: wrap; gap: 6px; align-items: baseline; font-size: 12px; }
+.explorer-value strong { font-size: 25px; }
+.explorer-value > span { color: var(--text-muted); margin-left: auto; }
+.explorer-sensor details { font-size: 12px; margin: 10px 0; }
+.explorer-sensor summary { cursor: pointer; padding: 5px 0; }
+.explorer-sensor dl { grid-template-columns: 75px minmax(0,1fr); margin: 8px 0; font-size: 11px; }
+.explorer-sensor dd { white-space: pre-wrap; overflow-wrap: anywhere; }
+.explorer-actions button { border: 1px solid var(--border); border-radius: 14px; background: var(--surface-soft); padding: 7px 9px; min-height: 34px; font-size: 11px; }
 @media (max-width: 480px) {
   .agent-chat .chat-history { padding: 10px 4px; }
   .agent-chat .chat-message { max-width: 96%; padding: 10px; }

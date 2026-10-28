@@ -111,4 +111,14 @@ node scripts/e2e.mjs</code></pre>
 <tr><td><code>ai-drawer.jpg</code> · <code>simulator-drawer.jpg</code> · <code>audit-drawer.jpg</code></td><td>AI·승인·변경 기록 도우미</td></tr>
 </tbody></table>
 <p>검증 캡처 5개를 <code>docs/images/</code>에도 반영했다. 데스크톱 계통도 캡처는 문서에서 <code>workspace.jpg</code>로 사용한다.</p>
-<p>문서 생성 명령은 <code>uv run --frozen python scripts/build-guide.py</code>다. 새 지침·결과와 관련 소스는 프로젝트 지도에 포함되어 페이지 안에서 읽을 수 있다. 문서 생성·Python 구문·내장 JavaScript 구문과 문서 링크를 검사했다. <code>node scripts/review-ui.mjs</code>로 문서 브라우저 검사도 통과했다.</p></main></body></html>
+<p>문서 생성 명령은 <code>uv run --frozen python scripts/build-guide.py</code>다. 새 지침·결과와 관련 소스는 프로젝트 지도에 포함되어 페이지 안에서 읽을 수 있다. 문서 생성·Python 구문·내장 JavaScript 구문과 문서 링크를 검사했다. <code>node scripts/review-ui.mjs</code>로 문서 브라우저 검사도 통과했다.</p>
+<h2>2026-10-28 대화 안 데이터 탐색</h2>
+<p><code>WorkspacePanel</code> → <code>AgentPanel</code> → <code>ChatExplorer</code>에서 기존 센서 분류와 <code>SensorTrend</code>를 재사용했다. 센서 미선택 상태에서도 설비 → 세부 묶음 → 센서로 들어가고 상위 경로로 돌아갈 수 있다. 센서를 명시적으로 고를 때 질문 대상과 화면 선택을 맞추며 원본 Tag의 끝 공백을 보존한다.</p>
+<p>탐색만으로 모델을 호출하지 않는다. 현재 수신값·품질·시각과 원본 근거를 표시하며 최근 2분 추이·원본값은 펼칠 때 조회한다. 숨겨진 센서 상세의 중복 추이 조회와 AI 진입 앞의 중복 선택기를 제거했다. 완료된 답변의 탐색 버튼과 후속 질문은 해당 답변의 센서를 사용한다. 초안 폐기 확인, 조회 중 대상 변경 차단, viewer의 모델 호출 제한과 이전 대화 보존을 유지한다.</p>
+<table><thead><tr><th scope="col">검증</th><th scope="col">이번 실행 결과</th></tr></thead><tbody>
+<tr><td>수정 전 <code>node scripts/check-bundle-performance.mjs --drilldown</code></td><td>대화 안 탐색 영역이 없어 실패</td></tr>
+<tr><td><code>npm --prefix frontend run build</code></td><td>TypeScript·Vite 종료 0; 기존 3D 청크 크기 경고 유지</td></tr>
+<tr><td>수정 후 <code>node scripts/check-bundle-performance.mjs --drilldown</code></td><td>종료 0, 12개 브라우저 항목 통과</td></tr>
+</tbody></table>
+<p>이번 브라우저 검증은 격리된 합성 API·관측값·모델 답변을 사용한다. 설비/묶음/센서 이동, 0·결측·파싱 오류, 펼칠 때 추이 요청, 끝 공백 Tag, 초안 확인, 조회 중 변경 차단, 후속 질문 문맥, viewer, 모바일 375px·높이 500px의 입력창과 대비를 확인했다. 기존 지연 로딩·선택·카메라·WebGL 대체·초안 보존도 함께 통과했다. 초기 JavaScript는 244,344바이트이며 10개 관측 갱신 중 <code>SceneCanvas</code> 추가 렌더는 0회다.</p>
+<p>결과와 화면은 <code>artifacts/e2e/chat-drilldown/</code>에 저장했다. 실제 Kafka·Ollama 연동과 운영 부하·침투 검사는 이번에 다시 실행하지 않았다. 원본 CSV·DB·시크릿·패키지·lock 파일은 변경하지 않았다.</p></main></body></html>

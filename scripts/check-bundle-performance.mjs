@@ -10,7 +10,8 @@ import { inspect } from './review-ui.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'frontend/dist');
 const brandReview = process.argv.includes('--brand');
-const out = resolve(root, 'artifacts/e2e', brandReview ? 'brand-theme' : 'bundle-performance');
+const drilldownReview = process.argv.includes('--drilldown');
+const out = resolve(root, 'artifacts/e2e', drilldownReview ? 'chat-drilldown' : brandReview ? 'brand-theme' : 'bundle-performance');
 mkdirSync(out, { recursive: true });
 const result = { passed: false, fixture: 'Isolated synthetic API and telemetry; no backend or database', checks: [] };
 const html = readFileSync(resolve(dist, 'index.html'), 'utf8');
@@ -27,9 +28,17 @@ const registry = {
   sensors: Object.fromEntries(equipment.map(item => [item.primary_tag, { tag: item.primary_tag, label: item.name + ' 시험 센서', equipment: item.id, section: 'fixture', measurement_type: 'temperature', unit: '°C', unit_basis: 'Synthetic fixture', source_tag: null, description: null, mapping_confidence: 'logical-group', scene_position: [item.position[0], 2.7, item.position[2]], mapping_basis: 'Synthetic fixture', representative: true, related_tags: [] }])),
   flows: [{ id: 'fixture-flow', label: '검증용 흐름', equipment: ids }],
 };
+const drilldownTags = ['fixture-feeder-A ', 'fixture-feeder-missing', 'fixture-feeder-error'];
+if (drilldownReview) for (const [index, tag] of drilldownTags.entries()) registry.sensors[tag] = {
+  ...registry.sensors['fixture-feeders'], tag, label: ['급탄기 A 속도 평균값', '급탄기 A 요구값', '급탄기 A 유량'][index],
+  representative: false, source_tag: 'SOURCE-A-' + index, unit: index === 1 ? '%' : 'T/H',
+};
+const drilldownReadings = Object.fromEntries(drilldownTags.map((tag, index) => [tag, {
+  value: index === 0 ? 0 : null, raw: ['0.00', '', 'bad'][index], quality: ['valid', 'missing', 'parse_error'][index], error: null,
+}]));
 const snapshot = sequence => ({ type: 'telemetry', status: 'LIVE', stale: false, kafka: 'CONNECTED', error: null, rejected_events: 0, replay_interval_ms: 1000, stale_after_ms: 60000,
   current: { run_id: 'isolated-bundle-check', sequence, source_time: `2026-01-01T00:00:${String(sequence).padStart(2, '0')}`, emitted_at: new Date().toISOString(), kafka_offset: sequence,
-    sensors: Object.fromEntries(equipment.map((item, index) => [item.primary_tag, { value: 100 + index + sequence, raw: String(100 + index + sequence), quality: 'valid', error: null }])) } });
+    sensors: { ...Object.fromEntries(equipment.map((item, index) => [item.primary_tag, { value: 100 + index + sequence, raw: String(100 + index + sequence), quality: 'valid', error: null }])), ...(drilldownReview ? drilldownReadings : {}) } } });
 const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
 const server = createServer((request, response) => {
   const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
@@ -49,6 +58,8 @@ const poll = async (check, label) => {
 try {
   assert.ok(entryCode.length < 300000, `Initial JS exceeds 300 kB: ${entryCode.length}`);
   result.checks.push('Initial JavaScript is below 300 kB');
+  assert.deepEqual(result.chunks.filter(chunk => chunk.bytes > 500000), [], 'Every JavaScript chunk must stay within the default Vite 500 kB warning threshold');
+  result.checks.push('Every JavaScript chunk is at most 500 kB without raising the warning threshold');
   browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const context = await browser.newContext({ viewport: { width: 1800, height: 1100 } });
   await context.addInitScript(() => {
@@ -66,6 +77,10 @@ try {
     };
   });
   let authenticated = false;
+  let role = drilldownReview ? 'operator' : 'viewer';
+  let holdAnswer = false;
+  let releaseAnswer;
+  const queries = [];
   const sockets = new Set();
   const apiRequests = [];
   await context.routeWebSocket('**/api/ws', socket => { sockets.add(socket); socket.send(JSON.stringify(snapshot(1))); socket.onClose(() => sockets.delete(socket)); });
@@ -73,7 +88,13 @@ try {
     const url = new URL(route.request().url());
     apiRequests.push(url.pathname);
     const json = (body, status = 200) => route.fulfill({ status, contentType: 'application/json', body: JSON.stringify(body) });
-    if (url.pathname === '/api/session') return json(authenticated ? { user_id: 'fixture-viewer', role: 'viewer' } : { detail: 'Login required' }, authenticated ? 200 : 401);
+    if (url.pathname === '/api/session') return json(authenticated ? { user_id: 'fixture-user', role } : { detail: 'Login required' }, authenticated ? 200 : 401);
+    if (drilldownReview && url.pathname === '/api/agent/query') {
+      const query = route.request().postDataJSON(); queries.push(query);
+      if (holdAnswer) await new Promise(resolveAnswer => { releaseAnswer = resolveAnswer; });
+      return json({ trace_id: 'fixture-trace-' + queries.length, model: 'isolated-fixture',
+        answer: query.tag + '의 현재 원본 관측을 확인했습니다.', explanation: '격리된 브라우저 검증용 답변입니다.', limitations: '실제 모델을 호출하지 않았습니다.' });
+    }
     if (url.pathname === '/api/registry') return json(registry);
     if (url.pathname === '/api/forecast') return brandReview ? json({ target: '재열기 시험 센서', unit: '°C', input_value: 114, prediction: 114.2,
       selected_model: 'linear_ar', horizon_minutes: 5, forecast_time: '2026-01-01T00:05:11', advisory: '격리 UI 검증용 값입니다.', status: 'LIVE',
@@ -133,6 +154,84 @@ try {
   result.sceneRendersForTenTelemetryUpdates = sceneCommitsAfter - sceneCommitsBefore;
   assert.equal(result.sceneRendersForTenTelemetryUpdates, 0);
   result.checks.push('Ten new telemetry observations update HTML values without rendering SceneCanvas');
+
+  if (drilldownReview) {
+    await page.getByRole('button', { name: 'AI 도우미 열기' }).click();
+    const explorer = page.getByRole('region', { name: '대화 안 데이터 탐색' });
+    await explorer.waitFor({ timeout: 5000 });
+    assert.equal(await page.locator('#sensor-group:visible').count(), 0, 'No duplicate picker before the chat');
+    await explorer.getByRole('button', { name: '급탄기 · 4개 센서', exact: true }).focus();
+    await page.keyboard.press('Enter');
+    await explorer.getByRole('button', { name: '급탄기 A · 3개 센서', exact: true }).click();
+    assert.ok((await explorer.textContent()).includes('원본 결측') && (await explorer.textContent()).includes('파싱 오류'));
+    await explorer.getByRole('button', { name: '급탄기 A 속도 평균값 선택', exact: true }).click();
+    assert.ok((await page.getByTestId('agent-target').textContent()).includes(drilldownTags[0]));
+    assert.ok((await explorer.textContent()).includes('0'));
+    assert.equal(queries.length, 0, 'Browsing never calls the model');
+    assert.equal(apiRequests.filter(path => path === '/api/sensors/history').length, 0, 'History is deferred until expanded');
+    await explorer.getByText('최근 2분 추이·원본값', { exact: true }).click();
+    await explorer.getByTestId('sensor-trend').waitFor();
+    await poll(() => apiRequests.includes('/api/sensors/history'), 'Deferred sensor history');
+    await explorer.getByText('추이 원본값 표로 보기', { exact: true }).click();
+    assert.ok((await explorer.getByTestId('sensor-trend-source-table').textContent()).includes('0.00'));
+    result.checks.push('Unselected chat drills into equipment, area and raw sensor; zero/missing/errors stay distinct and history loads on expansion');
+
+    holdAnswer = true;
+    await explorer.getByRole('button', { name: 'AI로 현재값 설명', exact: true }).click();
+    await poll(() => queries.length === 1 && !!releaseAnswer, 'Frozen sensor request');
+    assert.equal(queries[0].tag, drilldownTags[0], 'Raw trailing-space Tag is preserved');
+    await page.getByRole('button', { name: '02 화로', exact: true }).click();
+    assert.ok((await page.getByTestId('agent-target').textContent()).includes(drilldownTags[0]), 'Scene selection cannot retarget a pending answer');
+    await explorer.getByRole('button', { name: '전체 설비', exact: true }).click();
+    await explorer.getByRole('button', { name: '급탄기 · 4개 센서', exact: true }).click();
+    await explorer.getByRole('button', { name: '급탄기 A · 3개 센서', exact: true }).click();
+    assert.equal(await explorer.getByRole('button', { name: '급탄기 A 요구값 선택', exact: true }).isDisabled(), true);
+    assert.equal(queries.length, 1);
+    holdAnswer = false; releaseAnswer();
+    await page.getByTestId('agent-answer').waitFor();
+    await page.locator('#agent-question').fill('보관할 탐색 초안');
+    page.once('dialog', dialog => dialog.dismiss());
+    await explorer.getByRole('button', { name: '급탄기 A 요구값 선택', exact: true }).click();
+    assert.equal(await page.locator('#agent-question').inputValue(), '보관할 탐색 초안');
+    assert.ok((await page.getByTestId('agent-target').textContent()).includes(drilldownTags[0]));
+    page.once('dialog', dialog => dialog.accept());
+    await explorer.getByRole('button', { name: '급탄기 A 요구값 선택', exact: true }).click();
+    await poll(async () => await page.locator('#agent-question').inputValue() === '', 'Draft cleared after confirmed target change');
+    assert.ok((await explorer.textContent()).includes('원본 결측'));
+    await page.getByRole('button', { name: '이 센서 데이터 탐색', exact: true }).click();
+    await explorer.getByRole('heading', { name: '급탄기 A 속도 평균값', exact: true }).waitFor();
+    assert.ok((await page.getByTestId('agent-target').textContent()).includes(drilldownTags[0]));
+    await page.getByRole('button', { name: '추이 이어 묻기', exact: true }).click();
+    await poll(() => queries.length === 2, 'Contextual follow-up request');
+    await poll(async () => await page.getByTestId('agent-answer').count() === 2, 'Both answers preserved');
+    assert.equal(queries[1].tag, drilldownTags[0]);
+    assert.equal(queries[1].equipment, 'feeders');
+    assert.equal(apiRequests.filter(path => /simulator\/proposals/.test(path)).length, 0);
+    result.checks.push('Pending target changes are blocked; draft discard needs confirmation; old answers explore and ask with their original raw Tag');
+    await inspect(page, 'drilldown-desktop', out);
+    await page.screenshot({ path: resolve(out, 'chat.png'), fullPage: true });
+    for (const height of [900, 500]) {
+      await page.setViewportSize({ width: 375, height });
+      await inspect(page, 'drilldown-mobile-' + height, out);
+      const input = await page.locator('#agent-question').boundingBox();
+      assert.ok(input.height > 30 && input.y >= 0 && input.y + input.height <= height, 'Composer remains on screen');
+      assert.ok((await page.locator('.chat-history').boundingBox()).height >= 70, 'Transcript keeps scrollable space');
+    }
+    await page.screenshot({ path: resolve(out, 'mobile.png'), fullPage: true });
+    await page.setViewportSize({ width: 1800, height: 1100 });
+    role = 'viewer';
+    await page.reload();
+    await page.getByRole('button', { name: 'AI 도우미 열기' }).click();
+    await explorer.getByRole('button', { name: '급탄기 · 4개 센서', exact: true }).click();
+    await explorer.getByRole('button', { name: '급탄기 A · 3개 센서', exact: true }).click();
+    await explorer.getByRole('button', { name: '급탄기 A 속도 평균값 선택', exact: true }).click();
+    assert.equal(await explorer.getByRole('button', { name: 'AI로 현재값 설명', exact: true }).isDisabled(), true);
+    assert.equal(queries.length, 2);
+    role = 'operator';
+    await page.reload();
+    await poll(async () => await page.locator('.scene-marker').count() === 7, 'Scene after drilldown review');
+    result.checks.push('Desktop/mobile and short-screen chat preserve contrast, keyboard controls and composer; viewers explore without model permission');
+  }
 
   const scene = page.getByLabel('계통도 화면', { exact: true });
   const target = equipment[3];

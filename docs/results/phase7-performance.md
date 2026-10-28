@@ -54,7 +54,30 @@
 
 ## 4. 남은 한계
 
-- 전체 JS 코드량을 줄인 수치가 아니라 초기 엔트리에서 분리한 수치다. 모니터링 진입 시 3D의 904.49 kB가 추가로 필요하며 해당 청크의 Vite 500 kB 경고는 남는다.
+- 초기 엔트리 감소는 전체 JS 코드량을 줄인 수치가 아니다. 모니터링 진입 시 3D 코드가 추가로 필요하다. 10월 19일에 남았던 500 kB 경고는 아래 10월 28일 모듈 분리로 해소했다.
 - 설치된 글꼴이 없으면 2,057.69 kB WOFF2를 받는다. 한글 표시 범위나 이미지 품질을 줄이지 않았으며 이미지 바이트 수는 그대로다.
 - CSV 캐시는 프로세스별로 유지한다. 첫 조회·파일 변경·새 조회 조합은 여전히 원본을 순회하며 여러 센서의 첫 조회를 한 번의 파일 순회로 합치는 작업은 포함하지 않는다.
 - 실제 Kafka·Ollama·운영 DB의 부하 시험과 전체 통합 E2E는 이번 검증 범위에 포함하지 않았다.
+
+## 5. 2026-10-28 3D 청크 크기 경고 해소
+
+호출 경로는 `App`의 지연 import → `BoilerScene` → React Three Fiber → Three.js다. 설치된 Three.js의 `three.core.js`와 `three.module.js`가 화면·React 렌더러와 한 청크로 합쳐진 것을 확인했다. [Vite 설정](../../frontend/vite.config.ts)에서 이 두 라이브러리 모듈만 각각 `three-core`, `three-webgl` 청크로 지정했다. 명시한 모듈만 분리해 React나 다른 화면의 의존성을 끌어오지 않으며 기존 `Canvas`와 화면 코드는 유지한다.
+
+| 항목 | 변경 전 | 변경 후 |
+| --- | --- | --- |
+| 가장 큰 JavaScript 청크 | 904.65 kB | 375.76 kB |
+| Three.js 코어 | 화면 청크에 포함 | 375.76 kB |
+| WebGL 렌더러 | 화면 청크에 포함 | 334.54 kB |
+| 3D 화면·React 렌더러 | 통합 청크 904.65 kB | 199.17 kB |
+| 로그인 초기 JavaScript | 244.34 kB | 244.41 kB |
+| 3D JavaScript 합계 | 904.65 kB | 909.47 kB |
+
+개별 청크를 기본 경고 기준인 500 kB 아래로 나누었다. 전체 3D 코드량 감소는 아니며 모듈 간 연결 코드로 약 4.82 kB가 추가되고 최초 3D 진입에는 세 청크를 요청한다. 로그인에서는 여전히 3D를 받지 않는다. 라이브러리와 화면 코드에 별도 콘텐츠 해시가 붙으며 로컬 개발·미리보기의 기존 no-store 정책은 유지한다. 경고 기준·의존성 버전·lock 파일·센서 데이터는 변경하지 않았고 삭제한 파일은 없다.
+
+| 검증 명령 | 이번 결과 |
+| --- | --- |
+| 수정 전 `node scripts/check-bundle-performance.mjs` | 904,650바이트 청크가 500,000바이트를 초과해 실패 |
+| `npm --prefix frontend run build` | 종료 0, TypeScript·Vite 통과, 청크 크기 경고 없음 |
+| `node scripts/check-bundle-performance.mjs --drilldown` | 종료 0, 청크 상한·실제 WebGL 선택·카메라·컨텍스트 손실/미지원 대안·채팅·모바일 등 13개 항목 통과 |
+
+회귀 검증은 모든 JavaScript 청크를 500,000바이트 이하로 검사한다. 로그인은 초기 엔트리만 요청하고, 관측 10회 중 `SceneCanvas` 추가 렌더는 0회였다. 수정 전 결과는 `artifacts/e2e/bundle-performance/chunk-size-before.json`, 수정 후 결과는 `artifacts/e2e/chat-drilldown/result.json`에 저장했다. 브라우저는 격리된 API·관측값·모델 답변을 사용했다. 실제 장비별 다운로드 시간·GPU 성능·운영 부하와 Kafka·Ollama 통합은 이번에 측정하지 않았다.

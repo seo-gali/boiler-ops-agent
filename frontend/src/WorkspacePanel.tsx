@@ -20,12 +20,13 @@ export function WorkspacePanel({ registry, selected, tab, onTab, onClose, onSele
   useEffect(() => { onChatState({ pending, draft }); }, [pending, draft, onChatState]);
   useEffect(() => { onEvidence(questionSensor?.equipment === 'reheater' ? agentTrace : null); }, [agentTrace, questionSensor?.equipment, onEvidence]);
   const askAbout = (tag: string) => {
-    if (pending) return;
+    if (pending) return false;
     if (questionTag !== tag) {
-      if (draft && !window.confirm('작성 중인 질문을 지우고 다른 센서에 질문할까요? 지난 대화는 남아 있습니다.')) return;
+      if (draft && !window.confirm('작성 중인 질문을 지우고 다른 센서에 질문할까요? 지난 대화는 남아 있습니다.')) return false;
       setAgentTrace(null); setQuestionTag(tag);
     }
-    onTab('agent');
+    onSelect(tag);
+    return onTab('agent');
   };
   useEffect(() => {
     if (questionRequest && requested.current !== questionRequest.id) {
@@ -39,12 +40,12 @@ export function WorkspacePanel({ registry, selected, tab, onTab, onClose, onSele
       const next = event.key === 'ArrowRight' ? (index + 1) % tabs.length : event.key === 'ArrowLeft' ? (index + tabs.length - 1) % tabs.length : event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : null;
       if (next !== null) { event.preventDefault(); if (onTab(tabs[next].id)) document.getElementById(`tab-${tabs[next].id}`)?.focus(); }
     }}>{item.label}{item.id === 'agent' && pending && <span className="pending-dot" aria-label="응답 대기 중"> ·</span>}</button>)}</div>
-    <div className={`workspace-scroll ${tab === 'agent' && questionSensor ? 'agent-workspace' : ''}`}>
-      {(tab === 'sensor' || (tab === 'agent' && !questionTag)) && <div className="workspace-context"><SensorPicker registry={registry} selected={selected} onSelect={onSelect} /></div>}
-      <div id="workspace-sensor" role="tabpanel" aria-labelledby="tab-sensor" hidden={tab !== 'sensor'}><SensorInspector registry={registry} sensor={sensor} canAsk={!pending} onAsk={() => { if (selected) askAbout(selected); }} /></div>
+    <div className={`workspace-scroll ${tab === 'agent' ? 'agent-workspace' : ''}`}>
+      {tab === 'sensor' && <div className="workspace-context"><SensorPicker registry={registry} selected={selected} onSelect={onSelect} /></div>}
+      <div id="workspace-sensor" role="tabpanel" aria-labelledby="tab-sensor" hidden={tab !== 'sensor'}>{tab === 'sensor' && <SensorInspector registry={registry} sensor={sensor} canAsk={!pending} onAsk={() => { if (selected) askAbout(selected); }} />}</div>
       <div id="workspace-agent" role="tabpanel" aria-labelledby="tab-agent" hidden={tab !== 'agent'}>
         {questionSensor && sensor && selected !== questionTag && <div className="question-context-note"><p>화면에서 살펴보는 센서: <b>{sensor.label}</b></p><p>아래 질문과 답변은 <b>{questionSensor.label}</b>을 유지합니다.</p><button disabled={pending} onClick={() => askAbout(sensor.tag)}>이 센서로 새 질문</button>{pending && <small>답변을 기다리거나 대기를 취소한 뒤 대상을 바꿀 수 있습니다.</small>}</div>}
-        {questionSensor ? <AgentPanel equipment={questionSensor.equipment} tag={questionTag} onTrace={setAgentTrace} onPending={setPending} onDraftChange={setDraft} cancelVersion={cancelVersion} /> : <p className="empty-inspector">질문할 센서를 위 분류나 계통도에서 선택하세요.</p>}
+        <AgentPanel registry={registry} equipment={questionSensor?.equipment ?? null} tag={questionTag} onSelect={askAbout} onTrace={setAgentTrace} onPending={setPending} onDraftChange={setDraft} cancelVersion={cancelVersion} />
       </div>
     </div>
   </aside>;

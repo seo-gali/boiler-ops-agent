@@ -47,8 +47,25 @@
 <p>재현 자료는 <code>artifacts/e2e/telemetry-performance/</code>, <code>artifacts/e2e/bundle-performance/result.json</code>, <code>artifacts/api-performance-green.json</code>, <code>artifacts/e2e/phase7/ui-review/docs-result.json</code>에 남긴다. 기존 <code>artifacts/api-performance-red.json</code>, <code>artifacts/api-performance-history-red.json</code>에는 수정 전 실패가 있다.</p>
 <h2>4. 남은 한계</h2>
 <ul>
-<li>전체 JS 코드량을 줄인 수치가 아니라 초기 엔트리에서 분리한 수치다. 모니터링 진입 시 3D의 904.49 kB가 추가로 필요하며 해당 청크의 Vite 500 kB 경고는 남는다.</li>
+<li>초기 엔트리 감소는 전체 JS 코드량을 줄인 수치가 아니다. 모니터링 진입 시 3D 코드가 추가로 필요하다. 10월 19일에 남았던 500 kB 경고는 아래 10월 28일 모듈 분리로 해소했다.</li>
 <li>설치된 글꼴이 없으면 2,057.69 kB WOFF2를 받는다. 한글 표시 범위나 이미지 품질을 줄이지 않았으며 이미지 바이트 수는 그대로다.</li>
 <li>CSV 캐시는 프로세스별로 유지한다. 첫 조회·파일 변경·새 조회 조합은 여전히 원본을 순회하며 여러 센서의 첫 조회를 한 번의 파일 순회로 합치는 작업은 포함하지 않는다.</li>
 <li>실제 Kafka·Ollama·운영 DB의 부하 시험과 전체 통합 E2E는 이번 검증 범위에 포함하지 않았다.</li>
-</ul></main></body></html>
+</ul>
+<h2>5. 2026-10-28 3D 청크 크기 경고 해소</h2>
+<p>호출 경로는 <code>App</code>의 지연 import → <code>BoilerScene</code> → React Three Fiber → Three.js다. 설치된 Three.js의 <code>three.core.js</code>와 <code>three.module.js</code>가 화면·React 렌더러와 한 청크로 합쳐진 것을 확인했다. Vite 설정에서 이 두 라이브러리 모듈만 각각 <code>three-core</code>, <code>three-webgl</code> 청크로 지정했다. 명시한 모듈만 분리해 React나 다른 화면의 의존성을 끌어오지 않으며 기존 <code>Canvas</code>와 화면 코드는 유지한다.</p>
+<table><thead><tr><th scope="col">항목</th><th scope="col">변경 전</th><th scope="col">변경 후</th></tr></thead><tbody>
+<tr><td>가장 큰 JavaScript 청크</td><td>904.65 kB</td><td>375.76 kB</td></tr>
+<tr><td>Three.js 코어</td><td>화면 청크에 포함</td><td>375.76 kB</td></tr>
+<tr><td>WebGL 렌더러</td><td>화면 청크에 포함</td><td>334.54 kB</td></tr>
+<tr><td>3D 화면·React 렌더러</td><td>통합 청크 904.65 kB</td><td>199.17 kB</td></tr>
+<tr><td>로그인 초기 JavaScript</td><td>244.34 kB</td><td>244.41 kB</td></tr>
+<tr><td>3D JavaScript 합계</td><td>904.65 kB</td><td>909.47 kB</td></tr>
+</tbody></table>
+<p>개별 청크를 기본 경고 기준인 500 kB 아래로 나누었다. 전체 3D 코드량 감소는 아니며 모듈 간 연결 코드로 약 4.82 kB가 추가되고 최초 3D 진입에는 세 청크를 요청한다. 로그인에서는 여전히 3D를 받지 않는다. 라이브러리와 화면 코드에 별도 콘텐츠 해시가 붙으며 로컬 개발·미리보기의 기존 no-store 정책은 유지한다. 경고 기준·의존성 버전·lock 파일·센서 데이터는 변경하지 않았고 삭제한 파일은 없다.</p>
+<table><thead><tr><th scope="col">검증 명령</th><th scope="col">이번 결과</th></tr></thead><tbody>
+<tr><td>수정 전 <code>node scripts/check-bundle-performance.mjs</code></td><td>904,650바이트 청크가 500,000바이트를 초과해 실패</td></tr>
+<tr><td><code>npm --prefix frontend run build</code></td><td>종료 0, TypeScript·Vite 통과, 청크 크기 경고 없음</td></tr>
+<tr><td><code>node scripts/check-bundle-performance.mjs --drilldown</code></td><td>종료 0, 청크 상한·실제 WebGL 선택·카메라·컨텍스트 손실/미지원 대안·채팅·모바일 등 13개 항목 통과</td></tr>
+</tbody></table>
+<p>회귀 검증은 모든 JavaScript 청크를 500,000바이트 이하로 검사한다. 로그인은 초기 엔트리만 요청하고, 관측 10회 중 <code>SceneCanvas</code> 추가 렌더는 0회였다. 수정 전 결과는 <code>artifacts/e2e/bundle-performance/chunk-size-before.json</code>, 수정 후 결과는 <code>artifacts/e2e/chat-drilldown/result.json</code>에 저장했다. 브라우저는 격리된 API·관측값·모델 답변을 사용했다. 실제 장비별 다운로드 시간·GPU 성능·운영 부하와 Kafka·Ollama 통합은 이번에 측정하지 않았다.</p></main></body></html>
