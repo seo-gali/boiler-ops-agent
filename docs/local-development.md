@@ -233,6 +233,12 @@ docker compose --env-file .env --env-file .env.security stop kafka
 
 `stop`은 컨테이너를 보존합니다. `down`이나 컨테이너 교체는 현재 구성에서 Kafka 재생 데이터를 잃을 수 있습니다. API의 Simulator DB·Trace·예측 모델은 로컬 `artifacts/` 경로에 남습니다. Kafka의 오래된 재생 시작 이벤트가 보관 기간을 지나 사라졌다면 CSV 생산자를 다시 시작해 새로운 run을 만듭니다.
 
+### 생성 파일 정리
+
+`artifacts/`에는 실행 데이터도 있으므로 폴더 전체를 삭제하지 않습니다. `simulator.sqlite`와 DB 부속 파일, `models/`, `agent/traces/`는 보존합니다. 테스트 폴더의 DB도 별도 삭제 승인 없이 지우지 않습니다. 완성 영상·자막은 `user-guide/`에 있습니다.
+
+실행이 끝난 검증의 캡처·로그·녹화 중간 파일, `tool-cache/`·`uv-install/` 캐시, `checkpoints/` 임시 코드 사본은 정리할 수 있습니다. 의존성이 설치된 `.venv/`·`frontend/node_modules/`, 원본 `data/`, 환경·인증 파일과 Git 추적 문서·이미지는 유지합니다. 결과 문서의 `artifacts/` 경로는 검증 당시 기록 위치이며, 로컬 정리 후 일부 파일은 없을 수 있습니다. 재검증하면 해당 스크립트가 산출물을 다시 만듭니다.
+
 ## 9. 막힐 때 확인할 곳
 
 | 증상 | 확인·해결 |
