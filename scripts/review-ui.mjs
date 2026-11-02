@@ -170,6 +170,7 @@ async function reviewDocumentation() {
     await staticPage.getByText('공개 문서 전체 보기', { exact: true }).click();
     await staticPage.getByRole('navigation', { name: '공개 문서' }).getByRole('link', { name: 'BoilerOps Agent', exact: true }).click();
     assert.ok(staticPage.url().endsWith('/read/readme.html'));
+    assert.equal(await staticPage.getByRole('link', { name: 'http://127.0.0.1:5173', exact: false }).getAttribute('href'), 'http://127.0.0.1:5173');
     await inspect(staticPage, 'docs-static-readme-375', output);
     const missing = await staticPage.goto(new URL('/boiler-ops-agent/missing/deep/page', base).href);
     assert.equal(missing.status(), 404);

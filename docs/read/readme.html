@@ -18,7 +18,8 @@
 <h3>실행</h3>
 <p><strong>Docker Desktop을 켜고</strong>, 엔진이 준비될 때까지 기다립니다. 이 README와 <code>package.json</code>이 있는 프로젝트 폴더에서 PowerShell을 열고 실행하세요.</p>
 <pre><code>npm start</code></pre>
-<p>서버와 데이터 재생이 자동으로 시작되고 브라우저가 열립니다. 브라우저가 안 열리면 <strong>http://127.0.0.1:5173</strong>으로 접속합니다. 처음에는 설치와 모델 준비에 시간이 걸리며, 기본 AI 모델이 없으면 약 4.7GB를 다운로드합니다.</p>
+<p>서버와 데이터 재생이 시작되면 브라우저가 열립니다. 열리지 않으면 <a href="http://127.0.0.1:5173" target="_blank" rel="noreferrer">http://127.0.0.1:5173 (새 탭)</a>으로 접속하세요.</p>
+<p>처음 실행할 때는 설치와 모델 준비에 시간이 걸립니다. 기본 AI 모델이 없으면 약 4.7GB를 다운로드합니다.</p>
 <h3>로그인과 종료</h3>
 <table><thead><tr><th scope="col">로그인 항목</th><th scope="col">입력할 값</th></tr></thead><tbody>
 <tr><td>사용자 ID</td><td><code>operator</code></td></tr>
@@ -41,24 +42,15 @@
 </tbody></table>
 <p>자세한 확인 방법은 <a href="docs-local-development.html">문제 해결 안내</a>에 있습니다. 설정 파일이나 키를 공유하지 마세요.</p>
 <h2>화면에서 할 수 있는 것</h2>
-<p><a href="https://youtu.be/qmk93cT4LGs" target="_blank" rel="noreferrer">사용 안내 영상 보기 · YouTube (새 탭)</a>에서 로그인부터 센서 탐색·기간 비교·승인 연습까지 따라 할 수 있습니다. <a href="docs-user-guide-scenario.html">시나리오와 녹화 방법</a>도 제공합니다.</p>
-<h3>설비와 센서 찾기</h3>
-<p>공장 그림에서 설비를 누르면 소속 센서 목록이 열립니다. 세부 묶음과 센서를 고른 뒤 <code>선택 센서 자세히 보기</code>를 누르면 값·단위·원본 시각을 확인할 수 있습니다. 오른쪽 상세에서 설비를 바꾸면 전체 118개 센서를 둘러볼 수 있습니다.</p>
-<p>그림 위에 마우스를 두고 <strong>Space + 드래그</strong>로 이동하고, <strong>Space + 휠</strong>로 확대·축소합니다. 방향·확대 버튼과 <code>보기 초기화</code>도 사용할 수 있습니다.</p>
-<h3>원하는 기간 비교하기</h3>
-<p><code>기간 조회</code>에서 센서를 고르고 <code>센서 추가</code>로 비교 대상을 담습니다. 시작·끝 시각을 입력해 조회하면 같은 단위의 센서는 한 그래프에, 다른 단위의 센서는 별도 그래프에 표시됩니다.</p>
-<p>그래프에 마우스를 올리거나 터치하면 그 시각의 값이 보입니다. 키보드 화살표로도 표시할 시각을 바꿀 수 있습니다.</p>
-<h3>AI에 질문하기</h3>
-<p>오른쪽 아래 <code>AI</code>나 센서 상세의 질문 버튼을 누릅니다. 대화 안에서 센서를 찾고 질문 예시를 고르거나 하단에 직접 입력합니다. <strong>Enter로 전송하고 Shift + Enter로 줄바꿈</strong>합니다.</p>
-<p>다른 설비를 둘러봐도 이미 보낸 질문의 대상은 유지됩니다. 새 대상으로 질문하려면 <code>이 센서로 새 질문</code>을 누릅니다.</p>
-<h3>예측과 승인 연습</h3>
-<p>공장 그림 아래에서 재열기의 현재 온도와 5분 뒤 예측을 함께 볼 수 있습니다. 예측이 시험에서 얼마나 틀렸는지도 표시합니다.</p>
-<p>위쪽 <code>승인 연습</code> 메뉴에서는 먼저 재열기에 AI 질문을 보내 근거를 준비합니다. 연습용 요청을 입력하고 변경값을 확인한 뒤 승인하거나 거절합니다. 본인의 처리 결과는 <code>변경 기록</code>에서 확인합니다.</p>
-<p>자동 갱신 일시정지 버튼은 위쪽 메뉴 줄에 있습니다. 연결 상태와 데이터 재생 간격은 LIVE 옆에서 확인합니다.</p>
-<p>센서 상세의 그래프와 원본값 표는 최신 <strong>원본 시각 기준 최근 120초</strong>를 보여줍니다. 1분마다 기록한 자료이므로 시작·끝 시각의 값을 포함하면 최대 3행이 보입니다. 더 긴 기간은 <code>기간 조회</code>에서 확인합니다.</p>
-<p>AI 답변을 기다리는 동안 걸린 시간이 표시됩니다. 대기를 취소하거나 오류 후 다시 조회할 수 있습니다. <strong>X 또는 Esc</strong>로 닫을 때 작성 중인 질문이나 기다리는 답변이 있으면 확인창이 뜹니다. 닫기를 선택하면 답변 기다림은 취소되고 작성한 글과 지난 대화는 남습니다. 도우미의 다른 탭으로 옮길 때는 조회가 계속됩니다.</p>
-<p>승인·거절 버튼을 눌렀지만 결과를 받지 못하면 화면이 서버 결과를 다시 읽습니다. 그래도 처리 여부가 보이지 않으면 <strong>서버 결과 다시 확인</strong>을 누르세요. 아직 승인 대기 상태라면 변경값을 검토하고 확인란을 다시 선택한 뒤 재시도합니다.</p>
-<p>아래 이미지는 센서 선택과 채팅을 개편했을 때의 화면입니다. 현재 앱은 짙은 푸른색을 사용합니다. 당시 전체 동작 검사 13개와 원본 데이터 대조 결과는 <a href="docs-results-phase7-select-chat-compare.html">검증 기록</a>에 있습니다.</p>
+<p><a href="https://youtu.be/qmk93cT4LGs" target="_blank" rel="noreferrer">사용 안내 영상 (새 탭)</a> · <a href="docs-local-development.html">자세한 사용법</a></p>
+<ul>
+<li><strong>공장 모니터링:</strong> 설비별 센서와 현재값·최근 2분 변화를 확인합니다.</li>
+<li><strong>기간 조회:</strong> 여러 센서의 원하는 기간을 그래프로 비교합니다.</li>
+<li><strong>AI 질문:</strong> 센서 값과 변화에 대해 원본 근거와 함께 답변받습니다.</li>
+<li><strong>5분 예측:</strong> 재열기의 5분 뒤 온도와 시험 오차를 확인합니다.</li>
+<li><strong>승인 연습·변경 기록:</strong> 연습용 변경안을 승인·거절하고 본인의 결과를 확인합니다.</li>
+</ul>
+<p>아래는 이전 검증 화면이며 현재 앱은 짙은 푸른색을 사용합니다. <a href="docs-results-phase7-select-chat-compare.html">당시 검증 기록</a></p>
 <p><img src="../images/select-workspace.jpg" alt="공장 지도에서 선택 상자로 설비와 센서를 탐색하는 화면" width="1800" height="1100" loading="lazy" decoding="async"></p>
 <table><thead><tr><th scope="col">AI 질문과 조회 근거</th><th scope="col">연습용 변경 승인</th></tr></thead><tbody>
 <tr><td><img src="../images/fixed-chat.jpg" alt="고정된 대화 영역과 하단 입력으로 AI 답변을 확인하는 화면" width="1800" height="1100" loading="lazy" decoding="async"></td><td><img src="../images/approval-workspace.jpg" alt="메인 승인 연습 화면에서 연습용 변경안의 승인 결과를 확인하는 화면" width="1800" height="1100" loading="lazy" decoding="async"></td></tr>

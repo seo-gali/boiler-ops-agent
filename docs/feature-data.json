@@ -241,8 +241,8 @@
       ]
     ],
     "contract": [
-      "train() → ModelReport { selected, validation, test, cutoffs }",
-      "forecast(state) → { prediction, horizon_minutes, source_time }",
+      "train() → { selected, validation, test, train_end_time, validation_end_time }",
+      "forecast(state) → { prediction, horizon_minutes, source_time, forecast_time, selected_model }",
       "ReadTools.call(\"get_temperature_forecast\") → 동일한 예측"
     ],
     "sources": [

@@ -59,7 +59,7 @@ def check():
             if not target:
                 continue
             destination = urlsplit(urljoin(url, target))
-            assert destination.scheme in ('https', 'mailto'), (url, target)
+            assert destination.scheme in ('https', 'mailto') or target == 'http://127.0.0.1:5173', (url, target)
             assert 'seoheejung.github.io' not in destination.netloc, (url, target)
             if destination.netloc != urlsplit(SITE).netloc:
                 continue
