@@ -173,16 +173,17 @@ export function OperationsAnalysis({ registry }: { registry: Registry }) {
     if (start > end) { setError('종료 시각은 시작 시각보다 빠를 수 없습니다.'); return; }
     const controller = new AbortController(); request.current = controller; setBusy(true);
     const offset = metadata.timezone_offset ?? '';
-    const results = await Promise.allSettled(tags.map(async tag => {
-      const query = new URLSearchParams({ tag, start: start + offset, end: end + offset, limit: '1000' });
-      return responseData<HistoryRange>(await apiFetch('/api/history/range?' + query, { signal: controller.signal }));
-    }));
-    if (controller.signal.aborted) return;
     const ranges: HistoryRange[] = [], errors: { tag: string; message: string }[] = [];
-    results.forEach((result, index) => {
-      if (result.status === 'fulfilled') ranges.push(result.value);
-      else errors.push({ tag: tags[index], message: result.reason instanceof Error ? result.reason.message : '원본 데이터 조회에 실패했습니다.' });
-    });
+    for (const tag of tags) {
+      if (controller.signal.aborted) return;
+      try {
+        const query = new URLSearchParams({ tag, start: start + offset, end: end + offset, limit: '1000' });
+        ranges.push(await responseData<HistoryRange>(await apiFetch('/api/history/range?' + query, { signal: controller.signal })));
+      } catch (error) {
+        errors.push({ tag, message: error instanceof Error ? error.message : '원본 데이터 조회에 실패했습니다.' });
+      }
+    }
+    if (controller.signal.aborted) return;
     setData(ranges); setFailures(errors); setBusy(false); request.current = null;
   }
   const candidates = groups.find(group => group.id === equipment)?.sensors ?? [];

@@ -1,7 +1,8 @@
 import asyncio
 from datetime import datetime
 from uuid import UUID
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager, contextmanager, suppress
+from threading import BoundedSemaphore
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request, Response
 
@@ -9,6 +10,7 @@ from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
 from starlette.responses import JSONResponse
 from backend.app.security import Security, SecurityMiddleware, Login
+from backend.app.observability import HttpObservability
 from backend.app.agent.traces import TraceStore
 from backend.app.config import Settings
 from backend.app.domain.registry import EQUIPMENT, PROCESS_FLOWS, make_registry
@@ -43,7 +45,20 @@ async def lifespan(app):
 
 
 app = FastAPI(title="BoilerOps Agent", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+app.state.http_metrics = {}
 app.add_middleware(SecurityMiddleware, owner=app)
+app.add_middleware(HttpObservability, owner=app)
+history_slots = BoundedSemaphore(2)
+
+
+@contextmanager
+def reserve_history():
+    if not history_slots.acquire(blocking=False):
+        raise HTTPException(429, "원본 조회가 많습니다. 잠시 후 다시 조회하세요.", headers={"Retry-After": "1"})
+    try:
+        yield
+    finally:
+        history_slots.release()
 
 
 @app.exception_handler(RequestValidationError)
@@ -76,6 +91,15 @@ async def logout(request: Request, response: Response):
 @app.get("/api/health")
 async def health():
     return {"status": "ok"}
+
+
+@app.get("/api/metrics/http")
+async def http_metrics(request: Request):
+    app.state.security.operator(request.state.principal)
+    return {"scope": "single-process; resets on restart", "routes": [
+        {"method": method, "route": route, **entry, "status_counts": dict(entry["status_counts"]),
+         "avg_duration_ms": entry["total_duration_ms"] / entry["count"]}
+        for (method, route), entry in sorted(app.state.http_metrics.items())]}
 
 
 @app.get("/api/registry")
@@ -112,7 +136,8 @@ async def analysis_loop(name: str = "reheater", limit: int = Query(120, ge=1, le
 @app.get("/api/history/metadata")
 def source_history_metadata():
     try:
-        return history_metadata(app.state.boiler.settings)
+        with reserve_history():
+            return history_metadata(app.state.boiler.settings)
     except (OSError, ValueError, TypeError) as error:
         raise HTTPException(503, "원본 CSV의 기간 정보를 읽을 수 없습니다. 데이터 파일과 일자 형식을 확인하세요.") from error
 
@@ -127,10 +152,11 @@ def source_history_range(tag: str, start: datetime, end: datetime, limit: int = 
     if start > end:
         raise HTTPException(422, "종료 시각은 시작 시각보다 빠를 수 없습니다.")
     try:
-        source = history_metadata(boiler.settings)
-        if source['first_time'] and (start.utcoffset() is None) != (source['timezone_offset'] is None):
-            raise HTTPException(422, "조회 시각의 시간대 형식이 CSV 원본과 다릅니다.")
-        return history_range(boiler.settings, tag, boiler.registry[tag]['unit'], start, end, limit)
+        with reserve_history():
+            source = history_metadata(boiler.settings)
+            if source['first_time'] and (start.utcoffset() is None) != (source['timezone_offset'] is None):
+                raise HTTPException(422, "조회 시각의 시간대 형식이 CSV 원본과 다릅니다.")
+            return history_range(boiler.settings, tag, boiler.registry[tag]['unit'], start, end, limit)
     except (OSError, ValueError, TypeError, KeyError) as error:
         raise HTTPException(503, "원본 CSV를 읽을 수 없습니다. 파일과 센서·일자 형식을 확인하세요.") from error
 

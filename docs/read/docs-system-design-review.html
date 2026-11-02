@@ -17,25 +17,26 @@
 <tr><td>느린 쿼리 → 인덱스</td><td>이미 audit(owner,id), proposals(owner) 인덱스를 사용한다. 확인한 경로는 상태 2 SELECT·Audit 1 SELECT로 N+1이 없다. 새 인덱스는 느린 실제 SQL과 실행 계획에 근거해 추가한다.</td></tr>
 <tr><td>느린 파일 → 오브젝트 스토리지·CDN</td><td>현재 로컬 앱과 정적 설명 페이지를 제공한다. 원본 CSV를 공개 CDN으로 옮기지 않는다. 공유 배포에서 정적 파일의 네트워크 지연이 확인되면 캐시 정책·압축·용량을 먼저 확인한다.</td></tr>
 <tr><td>일시적 장애 → 백오프 재시도</td><td>WebSocket은 1초부터 최대 10초의 지수 백오프, Kafka 소비자는 1초 간격 재시도가 있다. 쓰기 요청을 자동 재시도하기 전에 실제 실행 결과 확인이 필요하다. 재시도 횟수·대상·종료 조건을 구분한다.</td></tr>
-<tr><td>요청 과다 → 속도 제한</td><td>IP·로그인·사용자·모델·WS 한도가 이미 있다. CSV 기간 조회의 동시 요청 부하와 여러 worker에서 한도가 공유되지 않는 제약을 우선 확인한다.</td></tr>
+<tr><td>요청 과다 → 속도 제한</td><td>IP·로그인·사용자·모델·WS 한도에 더해 CSV 메타데이터·기간 조회는 프로세스 동시 2개로 제한한다. 브라우저는 센서별 조회를 순차 실행한다. 여러 worker에서 한도가 공유되지 않는 제약은 유지한다.</td></tr>
 <tr><td>서비스 장애 → 서킷 브레이커</td><td>로컬 Ollama 호출은 동시 2개와 시간 제한으로 경계를 둔다. 모델의 반복 장애로 정상 요청이 지속적으로 막히는 현상이 측정되면 빠른 실패·복구 확인을 검토한다. 현재 분산 서킷 브레이커를 추가할 근거는 없다.</td></tr>
-<tr><td>중복 요청 → 멱등성 키</td><td>승인에는 status·revision 검사, 제안에는 단일 사용 근거 제약이 있다. 중복 실행 차단과 같은 응답을 재전달하는 멱등성은 다르다. 우선 응답 유실 시 GET 재조회로 실제 결과를 확인하도록 하는 작은 보완이 적합하다.</td></tr>
-<tr><td>장애가 안 보임 → 로그·메트릭·트레이싱</td><td>모델 Trace와 Kafka 로그는 있지만 모든 HTTP 요청의 안정적인 요청 ID·경로별 지연·오류 메트릭까지 갖춘 것은 아니다. 이 관측을 먼저 보완하면 이후 확장 판단의 근거가 된다.</td></tr>
+<tr><td>중복 요청 → 멱등성 키</td><td>승인에는 status·revision 검사, 제안에는 단일 사용 근거 제약이 있다. 응답 유실·오류 시 GET으로 실제 결과를 확인하며 POST를 자동 재전송하지 않는다. 일반적인 멱등성 키와 동일 응답 재전달 기능을 도입한 것은 아니다.</td></tr>
+<tr><td>장애가 안 보임 → 로그·메트릭·트레이싱</td><td>모든 HTTP 요청의 서버 생성 ID·경로별 상태·지연을 기록한다. operator는 <code>/api/metrics/http</code>에서 요청·오류 수와 평균/최대 시간을 읽는다. 단일 프로세스 지표이며 분산 추적이나 percentile 측정은 아니다.</td></tr>
 </tbody></table>
-<h2>우선순위</h2>
+<h2>보완 결과와 남은 작업</h2>
 <ol>
-<li>승인 응답 유실·오류 뒤 서버 결과를 재조회해 사용자가 실행 여부를 확인하게 한다.</li>
-<li>센서 수·동시 사용자 수별 CSV 조회 지연을 측정하고 필요한 요청 동시성 제한을 적용한다.</li>
-<li>HTTP 요청 ID, 경로·상태·소요 시간 로그와 오류·지연 지표를 추가한다. 비밀값·질문 원문 전체를 로그에 넣지 않는다.</li>
+<li>승인 응답 유실 뒤 결과 재확인과 미확인 상태의 명시적 재조회·재확인을 구현했다.</li>
+<li>브라우저 CSV 조회를 순차 처리하고 서버 메타데이터·기간 조회에 공유 동시 2개 한도를 적용했다. 운영 부하별 지연 측정은 남아 있다.</li>
+<li>HTTP 요청 ID, 경로·상태·처리 시간 로그와 운영자용 오류·지연 지표를 구현했다. 비밀값·질문 원문 전체를 로그에 넣지 않는다.</li>
 <li>다음 DB 스키마 변경 전에 백업·적용·복구를 격리 환경에서 검증한다.</li>
 </ol>
-<p>위 항목은 제안이며 이번 사용 안내 영상 제작으로 서비스 구조나 DB를 변경하지 않는다. 운영 부하 시험·의존성 취약점 점검·침투 검사를 수행했다는 의미가 아니다.</p>
+<p>영상 제작 후 사용자의 추가 요청으로 위 1~3번을 최소 범위에서 보완했다. DB 스키마·운영 데이터·의존성·분산 구조는 바꾸지 않았다. <a href="docs-results-phase7-operational-reliability.html">검증 기록</a>은 격리된 요청·브라우저 검사이며 운영 부하 시험·취약점 점검·침투 검사를 대신하지 않는다.</p>
 <h2>근거와 알려진 불일치</h2>
 <ul>
 <li><a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/security.py">보안 경계</a>: 메모리 세션·속도·모델/WS 한도.</li>
-<li><a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/domain/history.py">기간 조회</a>, <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/frontend/src/OperationsAnalysis.tsx">다중 센서 요청</a>: 파일 기반 캐시와 센서별 순회·동시 요청.</li>
-<li><a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/simulator/service.py">Simulator</a>, <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/frontend/src/SimulatorPanel.tsx">화면</a>: 트랜잭션·revision·소유권과 성공 뒤에만 갱신하는 화면.</li>
+<li><a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/domain/history.py">기간 조회</a>, <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/frontend/src/OperationsAnalysis.tsx">다중 센서 요청</a>: 파일 기반 캐시와 센서별 순차 요청.</li>
+<li><a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/simulator/service.py">Simulator</a>, <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/frontend/src/SimulatorPanel.tsx">화면</a>: 트랜잭션·revision·소유권과 응답 유실 뒤 서버 결과 재확인.</li>
+<li><a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/observability.py">HTTP 관측</a>: 요청 ID, 안전한 내부 오류, JSON 로그와 경로별 집계.</li>
 <li><a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/frontend/src/telemetry.ts">실시간 재연결</a>, <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/streaming/consumer.py">Kafka 소비</a>: 백오프·재시도와 수신 상태.</li>
 <li><a href="docs-local-development.html">실행 범위</a>: 단일 API 프로세스 운영.</li>
 </ul>
-<p>기존 보안 지침의 안정적인 공개 DB 오류 코드 요구에 비해 Simulator 라우트는 sqlite3 저장소 오류를 해당 코드로 변환하지 않는다. 이전 위험 진단에서 발견한 이 불일치는 아직 남아 있다.</p></main></body></html>
+<p>기존 보안 지침과 달랐던 일반 DB 오류의 공개 코드 처리는 HTTP 관측 경계에서 <code>internal_error</code>·요청 ID를 반환하도록 보완했다. 실제 Simulator 라우트에 SQLite 오류를 주입해 내부 원문이 노출되지 않는 것을 확인했다.</p></main></body></html>

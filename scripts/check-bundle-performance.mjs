@@ -10,8 +10,9 @@ import { inspect } from './review-ui.mjs';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'frontend/dist');
 const brandReview = process.argv.includes('--brand');
-const drilldownReview = process.argv.includes('--drilldown');
-const out = resolve(root, 'artifacts/e2e', drilldownReview ? 'chat-drilldown' : brandReview ? 'brand-theme' : 'bundle-performance');
+const reliabilityReview = process.argv.includes('--reliability');
+const drilldownReview = process.argv.includes('--drilldown') || reliabilityReview;
+const out = resolve(root, 'artifacts/e2e', reliabilityReview ? 'operational-reliability' : drilldownReview ? 'chat-drilldown' : brandReview ? 'brand-theme' : 'bundle-performance');
 mkdirSync(out, { recursive: true });
 const result = { passed: false, fixture: 'Isolated synthetic API and telemetry; no backend or database', checks: [] };
 const html = readFileSync(resolve(dist, 'index.html'), 'utf8');
@@ -81,6 +82,11 @@ try {
   let holdAnswer = false;
   let releaseAnswer;
   const queries = [];
+  let rangeActive = 0, rangeMaximum = 0, rangeStarted = 0;
+  let simulatorValue = 0, simulatorRevision = 0, decisionPosts = 0, simulatorReadFails = false;
+  let decisionMode = 'lost';
+  let proposal = { id: 'fixture-proposal-1', old_value: 0, requested_value: 1, expected_revision: 0,
+    status: 'pending', expires_at: Date.now() / 1000 + 300, source_trace_id: 'fixture-trace' };
   const sockets = new Set();
   const apiRequests = [];
   await context.routeWebSocket('**/api/ws', socket => { sockets.add(socket); socket.send(JSON.stringify(snapshot(1))); socket.onClose(() => sockets.delete(socket)); });
@@ -101,10 +107,28 @@ try {
       beats_naive_on_test: false, test: { naive: { mae: .03, rmse: .08, samples: 10 }, linear_ar: { mae: .1, rmse: .11, samples: 10 } } })
       : json({ detail: '격리 검증에서는 예측 모델을 실행하지 않습니다.' }, 409);
     if (url.pathname === '/api/history/metadata') return json({ first_time: '2026-01-01T00:00:00', last_time: '2026-01-02T00:00:00', row_count: 86401, time_basis: 'Synthetic fixture', timezone_offset: null });
-    if (url.pathname === '/api/simulator') return json({ value: 0, revision: 0, enabled: false, proposals: [] });
+    if (reliabilityReview && /\/api\/simulator\/proposals\/.+\/decision$/.test(url.pathname)) {
+      decisionPosts++;
+      const decision = route.request().postDataJSON();
+      if (decisionMode !== 'pending') {
+        if (decision.approve) { simulatorValue = proposal.requested_value; simulatorRevision++; }
+        proposal.status = decision.approve ? 'executed' : 'rejected';
+      }
+      if (decisionMode === 'unreadable') simulatorReadFails = true;
+      if (decisionMode !== 'normal') return route.abort('failed');
+      return json({ status: proposal.status, value: simulatorValue, revision: simulatorRevision });
+    }
+    if (url.pathname === '/api/simulator') return simulatorReadFails ? json({ detail: 'Fixture read unavailable' }, 503)
+      : json({ value: simulatorValue, revision: simulatorRevision, enabled: reliabilityReview, proposals: reliabilityReview ? [proposal] : [] });
     if (url.pathname === '/api/simulator/audit') return json([]);
     if (url.pathname === '/api/sensors/history') return json({ tag: url.searchParams.get('tag'), unit: '°C', points: [] });
-    if (brandReview && url.pathname === '/api/history/range') {
+    if ((brandReview || reliabilityReview) && url.pathname === '/api/history/range') {
+      if (reliabilityReview) {
+        rangeStarted++; rangeActive++; rangeMaximum = Math.max(rangeMaximum, rangeActive);
+        await new Promise(resolveRange => setTimeout(resolveRange, 250));
+        rangeActive--;
+        if (url.searchParams.get('tag') === 'fixture-feeders') return json({ detail: '검증용 센서 조회 실패' }, 503);
+      }
       const start = url.searchParams.get('start'), end = url.searchParams.get('end'), tag = url.searchParams.get('tag');
       const baseValue = tag.includes('feeders') ? 100 : 110;
       const startTime = Date.parse(start + 'Z'), duration = Date.parse(end + 'Z') - startTime;
@@ -231,6 +255,79 @@ try {
     await page.reload();
     await poll(async () => await page.locator('.scene-marker').count() === 7, 'Scene after drilldown review');
     result.checks.push('Desktop/mobile and short-screen chat preserve contrast, keyboard controls and composer; viewers explore without model permission');
+  }
+
+  if (reliabilityReview) {
+    const navigateReliability = name => page.getByRole('navigation', { name: '페이지 메뉴' }).getByRole('link', { name, exact: true }).click();
+    await navigateReliability('기간 조회');
+    await page.getByLabel('시작 시각', { exact: true }).waitFor();
+    for (const group of ['feeders', 'furnace']) {
+      await page.getByLabel('조회 설비', { exact: true }).selectOption(group);
+      await page.getByRole('button', { name: '센서 추가', exact: false }).click();
+    }
+    await page.getByRole('button', { name: '기간 조회', exact: true }).click();
+    await page.getByTestId('history-chart').waitFor();
+    assert.equal(rangeMaximum, 1, 'Browser CSV queries must run sequentially');
+    assert.equal(await page.locator('.history-series').count(), 2, 'Other sensors survive a partial failure');
+    assert.ok((await page.locator('.history-error').textContent()).includes('검증용 센서 조회 실패'));
+    const priorRequests = rangeStarted;
+    await page.getByRole('button', { name: '기간 조회', exact: true }).click();
+    await poll(() => rangeStarted > priorRequests, 'First CSV request started');
+    await page.getByLabel('시작 시각', { exact: true }).fill('2026-01-01T00:02');
+    await new Promise(resolveAbort => setTimeout(resolveAbort, 600));
+    assert.equal(rangeStarted - priorRequests, 1, 'Cancel prevents remaining sensor requests');
+    assert.equal(await page.getByTestId('history-result').count(), 0, 'Cancelled results stay hidden');
+    result.checks.push('CSV queries run one at a time, retain partial successes and stop on input changes');
+
+    await navigateReliability('승인 연습');
+    await page.getByTestId('proposal-status').waitFor();
+    const confirm = page.getByRole('checkbox', { name: '위 Simulator 변경값과 데모 정책을 확인했습니다.' });
+    await confirm.check();
+    await page.getByRole('button', { name: '승인 및 Simulator 실행', exact: true }).click();
+    await poll(async () => await page.getByTestId('sim-value').textContent() === '1', 'Lost approval response reconciled by GET');
+    assert.equal(decisionPosts, 1, 'Approval POST is not automatically retried');
+    assert.ok((await page.locator('#sim-feedback').textContent()).includes('서버'));
+    result.checks.push('A lost approval response is reconciled with server state without repeating the write');
+
+    for (const mode of ['unreadable', 'pending']) {
+      proposal = { ...proposal, id: 'fixture-proposal-' + mode, old_value: simulatorValue,
+        requested_value: simulatorValue + 1, expected_revision: simulatorRevision, status: 'pending' };
+      decisionMode = mode;
+      await page.reload(); await navigateReliability('승인 연습');
+      await confirm.check();
+      const before = decisionPosts;
+      await page.getByRole('button', { name: '승인 및 Simulator 실행', exact: true }).click();
+      const verify = page.getByRole('button', { name: '서버 결과 다시 확인', exact: true });
+      await verify.waitFor();
+      assert.equal(await page.getByRole('button', { name: '승인 및 Simulator 실행', exact: true }).isDisabled(), true);
+      assert.equal(decisionPosts, before + 1);
+      simulatorReadFails = false;
+      await verify.click();
+      await verify.waitFor({ state: 'hidden' });
+      if (mode === 'pending') {
+        assert.equal(await confirm.isChecked(), false, 'Pending retry needs fresh human confirmation');
+        decisionMode = 'normal';
+        await confirm.check();
+        await page.getByRole('button', { name: '승인 및 Simulator 실행', exact: true }).click();
+        await poll(async () => await page.getByTestId('proposal-status').textContent() === 'executed', 'Explicit retry completes');
+      }
+    }
+    result.checks.push('Unknown decisions block writes, permit explicit server recheck and require fresh confirmation before retry');
+    proposal = { ...proposal, id: 'fixture-proposal-reject', old_value: simulatorValue,
+      requested_value: simulatorValue + 1, expected_revision: simulatorRevision, status: 'pending' };
+    decisionMode = 'lost';
+    const unchanged = simulatorValue;
+    await page.reload(); await navigateReliability('승인 연습');
+    await confirm.check();
+    await page.getByRole('button', { name: '거절', exact: true }).click();
+    await poll(async () => await page.getByTestId('proposal-status').textContent() === 'rejected', 'Lost rejection response reconciled');
+    assert.equal(simulatorValue, unchanged);
+    assert.ok((await page.locator('#sim-feedback').textContent()).includes('거절'));
+    result.checks.push('Lost rejection responses recover the rejected status without changing the value');
+    await inspect(page, 'reliability-approval', out);
+    await page.screenshot({ path: resolve(out, 'approval.png'), fullPage: true });
+    await page.reload();
+    await poll(async () => await page.locator('.scene-marker').count() === 7, 'Scene after reliability review');
   }
 
   const scene = page.getByLabel('계통도 화면', { exact: true });

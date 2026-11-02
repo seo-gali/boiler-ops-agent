@@ -10,8 +10,13 @@ export function SimulatorPanel({ agentTrace, active = true, canPrepare = true, o
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState('');
+  const [unverified, setUnverified] = useState<string | null>(null);
   useEffect(() => { if (message && active) document.getElementById('sim-feedback')?.focus(); }, [message, active]);
-  async function refresh() { const response = await apiFetch('/api/simulator'); if (!response.ok) throw new Error(`Simulator HTTP ${response.status}`); setState(await response.json()); }
+  async function refresh() {
+    const response = await apiFetch('/api/simulator', { signal: AbortSignal.timeout(15_000) });
+    if (!response.ok) throw new Error(`Simulator HTTP ${response.status}`);
+    const latest: State = await response.json(); setState(latest); return latest;
+  }
   useEffect(() => { refresh().catch(error => setError(String(error))); }, []);
   async function propose() {
     setBusy(true); setError(null); setMessage(''); setConfirmed(false);
@@ -24,13 +29,38 @@ export function SimulatorPanel({ agentTrace, active = true, canPrepare = true, o
   async function decide(proposal: Proposal, approve: boolean) {
     setBusy(true); setError(null); setMessage('');
     try {
-      const response = await apiFetch(`/api/simulator/proposals/${proposal.id}/decision`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approve, confirm: confirmed, expected_revision: proposal.expected_revision }) });
+      const response = await apiFetch(`/api/simulator/proposals/${proposal.id}/decision`, { method: 'POST', signal: AbortSignal.timeout(15_000), headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ approve, confirm: confirmed, expected_revision: proposal.expected_revision }) });
       const data = await response.json(); if (!response.ok) throw new Error(JSON.stringify(data.detail));
       setConfirmed(false); await refresh(); setMessage(approve ? '승인한 Simulator 변경이 실행되었습니다.' : '제안을 거절했습니다. Simulator 값은 유지됩니다.');
-    } catch (error) { setError(String(error)); } finally { setBusy(false); }
+    } catch {
+      setConfirmed(false); setUnverified(proposal.id);
+      setError('요청 응답을 확인하지 못했습니다. 서버에서 실행 여부를 다시 확인하세요.');
+      try { await reconcile(proposal.id); }
+      catch { setMessage('서버 결과도 읽지 못했습니다. 연결을 확인한 뒤 결과를 다시 확인하세요.'); }
+    } finally { setBusy(false); }
+  }
+  async function reconcile(id: string, manual = false) {
+    const latest = await refresh();
+    const result = latest.proposals.find(item => item.id === id);
+    setConfirmed(false);
+    if (result?.status === 'executed' || result?.status === 'rejected') {
+      setUnverified(null); setError(null);
+      setMessage(result.status === 'executed' ? '서버에서 승인된 변경의 실행 결과를 확인했습니다.' : '서버에서 제안이 거절된 것을 확인했습니다.');
+    } else if (manual && result?.status === 'pending') {
+      setUnverified(null);
+      setMessage('서버 상태는 승인 대기입니다. 변경값을 확인하고 확인 체크를 새로 선택한 뒤 다시 시도할 수 있습니다.');
+    } else {
+      setMessage('아직 완료된 결과를 확인하지 못했습니다. 잠시 후 서버 결과를 다시 확인하세요.');
+    }
+  }
+  async function checkDecision(id: string) {
+    setBusy(true); setError(null);
+    try { await reconcile(id, true); }
+    catch { setError('서버 결과를 읽지 못했습니다. 연결을 확인한 뒤 다시 확인하세요.'); }
+    finally { setBusy(false); }
   }
   const proposal = state?.proposals[0];
   return <section tabIndex={-1} className="simulator panel" aria-label="Simulator 승인"><div className="panel-heading"><div><span className="eyebrow">CONTROLLED SIMULATOR</span><h2>변경 승인 연습</h2></div><span className="quiet">실제 설비 연결 없음</span></div><div className="agent-content"><p className="note">연습용 숫자를 −10~10 안에서 한 번에 최대 1만큼 바꿉니다. 실제 보일러나 온도는 바뀌지 않습니다.</p><div className="analysis-stats"><span>현재 Simulator 값<b data-testid="sim-value">{state?.value ?? '—'}</b></span><span>변경 횟수<b>{state?.revision ?? '—'}</b></span></div>{!state?.enabled && <p className="note">제안과 승인은 운영자 계정에서 사용할 수 있습니다.</p>}
-      <label htmlFor="sim-intent">Simulator 요청</label><input id="sim-intent" placeholder="예: 연습용 값을 한 단계 높여 주세요" value={intent} onChange={event => setIntent(event.target.value)} maxLength={500} /><button className="primary-button" disabled={!state?.enabled || !agentTrace || busy || !intent.trim()} onClick={propose}>{busy ? '처리 중…' : 'Agent Simulator 제안 생성'}</button>{!agentTrace && <div className="prepare-evidence"><p>{canPrepare ? '먼저 재열기 센서를 선택하고 AI로 현재값을 조회하세요.' : '진행 중인 AI 답변을 기다리거나 대기를 취소하세요.'}</p><button disabled={!canPrepare} onClick={onPrepare}>재열기 선택하고 AI 질문으로 이동</button></div>}
-      <p id="sim-feedback" tabIndex={-1} role="status">{busy ? "Simulator 요청 처리 중입니다." : message}</p>{proposal && <div className="proposal"><h3>승인 대상: {proposal.old_value} → {proposal.requested_value}</h3><p data-testid="proposal-status">{proposal.status}</p><p className="quiet">제안 ID {proposal.id} · Revision {proposal.expected_revision} · 만료 {new Date(proposal.expires_at * 1000).toLocaleTimeString()}</p>{proposal.status === 'pending' && <><label className="confirm-label"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />위 Simulator 변경값과 데모 정책을 확인했습니다.</label><div className="decision-buttons"><button disabled={!state?.enabled || !confirmed || busy} onClick={() => decide(proposal, false)}>거절</button><button className="primary-button" disabled={!state?.enabled || !confirmed || busy} onClick={() => decide(proposal, true)}>승인 및 Simulator 실행</button></div></>}</div>}{error && <p role="alert">{error}</p>}<button className="record-link" onClick={onAudit}>승인·변경 기록 보기</button></div></section>;
+      <label htmlFor="sim-intent">Simulator 요청</label><input id="sim-intent" placeholder="예: 연습용 값을 한 단계 높여 주세요" value={intent} onChange={event => setIntent(event.target.value)} maxLength={500} /><button className="primary-button" disabled={!state?.enabled || !agentTrace || busy || !!unverified || !intent.trim()} onClick={propose}>{busy ? '처리 중…' : 'Agent Simulator 제안 생성'}</button>{!agentTrace && <div className="prepare-evidence"><p>{canPrepare ? '먼저 재열기 센서를 선택하고 AI로 현재값을 조회하세요.' : '진행 중인 AI 답변을 기다리거나 대기를 취소하세요.'}</p><button disabled={!canPrepare} onClick={onPrepare}>재열기 선택하고 AI 질문으로 이동</button></div>}
+      <p id="sim-feedback" tabIndex={-1} role="status">{busy ? "Simulator 요청 처리 중입니다." : message}</p>{unverified && <button className="record-link" disabled={busy} onClick={() => void checkDecision(unverified)}>서버 결과 다시 확인</button>}{proposal && <div className="proposal"><h3>승인 대상: {proposal.old_value} → {proposal.requested_value}</h3><p data-testid="proposal-status">{proposal.status}</p><p className="quiet">제안 ID {proposal.id} · Revision {proposal.expected_revision} · 만료 {new Date(proposal.expires_at * 1000).toLocaleTimeString()}</p>{proposal.status === 'pending' && <><label className="confirm-label"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} />위 Simulator 변경값과 데모 정책을 확인했습니다.</label><div className="decision-buttons"><button disabled={!state?.enabled || !confirmed || busy || !!unverified} onClick={() => decide(proposal, false)}>거절</button><button className="primary-button" disabled={!state?.enabled || !confirmed || busy || !!unverified} onClick={() => decide(proposal, true)}>승인 및 Simulator 실행</button></div></>}</div>}{error && <p role="alert">{error}</p>}<button className="record-link" onClick={onAudit}>승인·변경 기록 보기</button></div></section>;
 }

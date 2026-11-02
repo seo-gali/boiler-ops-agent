@@ -152,6 +152,13 @@ uv run python -m backend.app.replay.producer</code></pre>
 <tr><td><code>tsc</code>를 찾지 못함</td><td>루트에서 <code>npm.cmd ci --prefix frontend</code> 실행</td></tr>
 </tbody></table>
 <p>세션·요청·모델 한도는 <strong>단일 API 프로세스 기준</strong>입니다. 여러 worker를 실행하지 않습니다. 외부 배포 전에는 공유 세션·한도 저장소, TLS 프록시, 계정 운영·비밀 교체·보관 정책을 별도로 설계해야 합니다.</p>
+<h3>원본 조회 한도와 HTTP 관측</h3>
+<ul>
+<li>기간 비교는 센서별 CSV 요청을 순차 실행한다. 서버는 메타데이터·기간 조회를 합쳐 동시 2개까지만 실행하며 포화 요청은 429와 <code>Retry-After: 1</code>로 거부한다. 요청 취소 뒤에도 실제 읽기가 끝날 때 슬롯을 반납한다.</li>
+<li>모든 HTTP 응답의 <code>X-Request-ID</code>를 <code>uvicorn.error</code>의 JSON 요청 로그와 대조할 수 있다. 로그에는 경로 패턴·메서드·상태·<code>duration_ms</code>를 기록하고 쿼리·본문·쿠키·실제 UUID 값은 넣지 않는다. 요청 취소·응답 전 연결 종료는 관측용 499로 구분한다.</li>
+<li>operator로 로그인한 로컬 앱에서 <code>http://127.0.0.1:5173/api/metrics/http</code>를 열면 경로별 요청·상태 수, 4xx/5xx 수와 평균·최대 처리 시간을 읽을 수 있다. 포트가 다르면 실행한 앱 주소를 사용한다. 지표는 프로세스 재시작 시 초기화하며 percentile·분산 추적 지표가 아니다.</li>
+<li>일반 내부 오류는 원문 대신 <code>internal_error</code>와 요청 ID를 반환한다. 승인·거절 POST와 상태 재조회는 각각 최대 15초 기다린다. 응답이 끊겨도 POST를 자동 재전송하지 않으며 실행 상태를 먼저 다시 읽는다.</li>
+</ul>
 <h2>10. 변경을 다시 검증하기</h2>
 <p>Docker Desktop과 Ollama를 준비합니다. E2E는 설치된 모델을 사용하며 자동 다운로드하지 않습니다. 한 번만 브라우저를 설치합니다.</p>
 <pre><code>npm.cmd run build --prefix frontend
