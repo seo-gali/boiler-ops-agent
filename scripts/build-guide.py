@@ -35,7 +35,7 @@ FILES = [
     'backend/app/simulator/service.py', 'backend/app/forecast/train.py', 'backend/app/forecast/service.py',
     'frontend/src/telemetry.ts', 'frontend/src/types.ts', 'frontend/src/App.tsx', 'frontend/src/AgentPanel.tsx',
     'frontend/src/SimulatorPanel.tsx', 'frontend/src/ForecastPanel.tsx', 'frontend/src/OperationsAnalysis.tsx',
-    'frontend/src/BoilerScene.tsx', 'frontend/src/WorkspacePanel.tsx',
+    'frontend/src/BoilerScene.tsx', 'frontend/src/WorkspacePanel.tsx', 'frontend/src/ChatExplorer.tsx',
     'frontend/src/SensorPicker.tsx', 'frontend/src/SensorInspector.tsx', 'frontend/src/SensorTrend.tsx', 'frontend/src/RecordsPanel.tsx',
     'frontend/src/EquipmentSensors.tsx', 'frontend/src/sensor-catalog.ts',
     'frontend/src/sensor-catalog.css', 'frontend/src/equipment-sensors.css',
@@ -169,7 +169,7 @@ def feature_panels():
         contracts = ''.join('<code>' + html.escape(line) + '</code>' for line in feature['contract'])
         sources = ''.join(button(path, Path(path).name + ' ↗') for path in feature['sources'])
         report = button(feature['report'], feature['reportLabel'], 'action') if feature.get('report') else ''
-        panels.append(f'<section class="feature-panel" data-feature-panel="{html.escape(name, quote=True)}"' + ('' if name == 'telemetry' else ' hidden') + '><h3>' + html.escape(feature['title']) + '</h3><p>' + html.escape(feature['description']) + '</p><ol class="flow">' + flow + '</ol><details class="contracts"><summary>타입·시그니처·호출 계약 펼치기</summary>' + contracts + '</details><div class="details-line">' + sources + '</div>' + report + '</section>')
+        panels.append(f'<section class="feature-panel" data-feature-panel="{html.escape(name, quote=True)}"' + ('' if name == 'telemetry' else ' hidden') + '><h3>' + html.escape(feature['title']) + '</h3><p>' + html.escape(feature['description']) + '</p><ol class="flow">' + flow + '</ol><details class="contracts"><summary>개발자용 데이터·함수 설명 펼치기</summary>' + contracts + '</details><div class="details-line">' + sources + '</div>' + report + '</section>')
     return '\n'.join(panels)
 
 

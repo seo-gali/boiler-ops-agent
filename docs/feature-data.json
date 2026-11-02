@@ -1,17 +1,17 @@
 {
   "telemetry": {
     "title": "CSV의 원본값이 화면의 숫자가 되기까지",
-    "description": "원본 문자열을 서버에서 검증하고, 같은 상태를 화면과 이력에 전달합니다.",
+    "description": "CSV에서 읽은 값과 순서를 서버가 검사합니다. 확인한 값은 화면과 최근 기록에 함께 반영됩니다.",
     "steps": [
       [
         "원본 재생",
-        "run_id · sequence",
+        "이번 재생의 식별자와 순서",
         "backend/app/replay/producer.py",
         "producer.py"
       ],
       [
         "수신·검증",
-        "Tag · 순서 · quality",
+        "센서 이름 · 순서 · 값의 상태",
         "backend/app/domain/state.py",
         "state.py"
       ],
@@ -23,8 +23,8 @@
       ]
     ],
     "contract": [
-      "ReplayEvent { run_id, sequence, emitted_at, measurements }",
-      "BoilerState.apply(event, offset) → Reading { value, raw, quality }",
+      "ReplayEvent { run_id, sequence, source_row, source_time, emitted_at, measurements }",
+      "BoilerState.apply(event, offset) → 검증·current/history 갱신; Reading { value, raw, quality }",
       "Hub.publish(snapshot) → useReading(tag) → Inspector"
     ],
     "sources": [
@@ -37,8 +37,8 @@
     ]
   },
   "agent": {
-    "title": "고정된 채팅에서 질문하고, 원본 근거로 답변하기",
-    "description": "대화 안 예시와 메시지를 읽고 하단 입력에서 Enter로 보냅니다. 각 질문은 고정한 센서의 독립 조회이며, 이전 대화를 모델이 자동으로 기억하지 않습니다.",
+    "title": "센서를 찾고, AI에 값과 변화를 물어보기",
+    "description": "설비와 세부 묶음을 골라 센서를 찾습니다. 값을 살펴본 뒤 하단 입력창에서 질문하면 원본 근거와 함께 답변합니다. 지난 대화는 화면에 남지만 모델은 질문마다 새로 조회합니다.",
     "steps": [
       [
         "고정 대화·하단 입력",
@@ -47,14 +47,20 @@
         "AgentPanel.tsx"
       ],
       [
+        "대화 안 센서 탐색",
+        "설비 → 묶음 → 센서 · 추이 펼치기",
+        "frontend/src/ChatExplorer.tsx",
+        "ChatExplorer.tsx"
+      ],
+      [
         "조회 도구",
-        "고정된 관측 Snapshot",
+        "질문 시점의 값과 기록",
         "backend/app/agent/tools.py",
         "ReadTools"
       ],
       [
         "근거 선택·기록",
-        "모델 선택 · Trace",
+        "AI가 고른 근거와 조회 기록",
         "backend/app/agent/service.py",
         "query_agent"
       ],
@@ -68,6 +74,7 @@
     "contract": [
       "AgentQuery { question, equipment, tag } + Principal",
       "ChatTurn { question, tag, status, answer, elapsed } → 고정 영역에 누적",
+      "get_equipment_status 기본 호출 + 모델이 고른 추가 도구; 근거 ID는 모델이 선택",
       "ToolPlan { intents, tools } → Findings { evidence_ids }",
       "compose_answer(intents, evidence, tag, status) → 결론·설명·한계",
       "Trace { model_plan, model_findings, answer_gaps, elapsed_ms }"
@@ -77,28 +84,28 @@
       "backend/app/agent/traces.py",
       "frontend/src/chat.css"
     ],
-    "report": "docs/results/phase7-select-chat-compare.md",
-    "reportLabel": "이번 고정 채팅 개정·검증 기록 ↗"
+    "report": "docs/results/phase7-workspace.md",
+    "reportLabel": "AI 드릴다운·작업 화면 검증 기록 ↗"
   },
   "simulator": {
     "title": "유효한 근거로 제안하고, 본인이 확인해 승인",
-    "description": "운영자가 자신의 Trace와 제안만 다룹니다. 실제 발전설비와 연결되지 않은 데모 상태입니다.",
+    "description": "본인의 AI 조회 기록으로 연습용 변경안을 만듭니다. 운영자가 변경값을 확인해 승인해야 실행되며 실제 발전설비는 바뀌지 않습니다.",
     "steps": [
       [
         "근거 검사",
-        "소유자 · 나이 · 재생 세션",
+        "본인 기록 · 유효 시간 · 이번 재생",
         "backend/app/simulator/service.py",
         "evidence"
       ],
       [
         "제안 저장",
-        "단일 사용 · pending",
+        "근거 1회 사용 · 승인 대기",
         "backend/app/simulator/service.py",
         "propose"
       ],
       [
         "사람의 확인",
-        "revision · Audit",
+        "변경 횟수 · 승인 기록",
         "frontend/src/SimulatorPanel.tsx",
         "SimulatorPanel.tsx"
       ]
@@ -107,21 +114,24 @@
       "ProposalRequest { source_trace_id, intent } + Principal",
       "Simulator.propose(request, principal) → pending Proposal",
       "Decision { approve, confirm, expected_revision }",
-      "Simulator.decide(id, decision, principal) → Receipt + Audit"
+      "Simulator.decide(id, decision, principal) → Receipt + Audit",
+      "응답 유실 → GET 서버 결과 재확인; 미확인 중 쓰기 차단·POST 자동 재전송 없음"
     ],
     "sources": [
       "backend/app/main.py",
       "backend/app/security.py",
       "frontend/src/RecordsPanel.tsx"
-    ]
+    ],
+    "report": "docs/results/phase7-operational-reliability.md",
+    "reportLabel": "승인 결과 복구·HTTP 관측 검증 기록 ↗"
   },
   "workspace": {
     "title": "설비·묶음·선택 상자로 118개 센서 둘러보기",
-    "description": "설비 옆에서는 선택 상자와 센서 상태 목록을 함께 봅니다. 오른쪽 상세에는 묶음 버튼과 센서 선택을 두고 중복 검색을 제거했습니다. AI 대화는 탐색과 독립적으로 유지합니다.",
+    "description": "설비를 누르면 센서 목록과 값이 보입니다. 세부 묶음과 센서를 골라 상세를 열 수 있으며 다른 설비를 둘러봐도 진행 중인 AI 질문의 대상은 바뀌지 않습니다.",
     "steps": [
       [
         "공장·상태 목록",
-        "묶음 select · 센서 select",
+        "묶음과 센서 고르기",
         "frontend/src/EquipmentSensors.tsx",
         "EquipmentSensors.tsx"
       ],
@@ -133,7 +143,7 @@
       ],
       [
         "상세·최근 2분",
-        "원본 120초 · 질문 행동",
+        "최근 120초 값 · 이 센서에 질문",
         "frontend/src/SensorTrend.tsx",
         "SensorTrend.tsx"
       ],
@@ -163,11 +173,11 @@
       "frontend/src/workspace.css"
     ],
     "report": "docs/results/phase7-select-chat-compare.md",
-    "reportLabel": "이번 센서 선택·급탄기 감사 기록 ↗"
+    "reportLabel": "센서 선택·급탄기 감사 기록 ↗"
   },
   "history": {
     "title": "여러 센서의 같은 기간을 원본값으로 비교",
-    "description": "설비와 센서를 골라 추가합니다. 같은 단위는 색상으로 비교하고 다른 단위는 그래프를 나눕니다. 마우스·터치·방향키로 원본 관측값을 확인하며 결측은 연결하지 않습니다.",
+    "description": "비교할 센서와 기간을 고르면 원본값을 그래프로 보여줍니다. 같은 단위는 한 그래프에서 비교하고 다른 단위는 나누어 표시합니다. 마우스·터치·방향키로 값을 확인하며 비어 있는 구간은 선으로 잇지 않습니다.",
     "steps": [
       [
         "설비·다중 센서 선택",
@@ -177,13 +187,13 @@
       ],
       [
         "인증된 읽기 전용 API",
-        "센서별 metadata · range",
+        "파일의 기간 정보 · 센서별 값",
         "backend/app/main.py",
         "history routes"
       ],
       [
         "원본 행 조회",
-        "raw · quality · gap_before",
+        "원본 문자열 · 값의 상태 · 빈 구간",
         "backend/app/domain/history.py",
         "query_range"
       ]
@@ -195,19 +205,21 @@
       "Point { source_row, source_time, raw, value, quality, gap_before }",
       "동일 단위 → 같은 축·색상 비교; 다른 단위·미확인 단위 → 별도 그래프",
       "상세 값 → 실제 원본 시각·값·품질·행; 마우스·터치·방향키",
-      "센서별 실패·빈 결과 표시; 보간·임의 환산·결측 연결 없음"
+      "센서별 실패·빈 결과 표시; 보간·임의 환산·결측 연결 없음",
+      "브라우저 순차 조회; 서버 CSV 동시 2개·초과 시 429와 Retry-After: 1"
     ],
     "sources": [
       "frontend/src/history.css",
       "backend/app/security.py",
+      "backend/app/observability.py",
       "frontend/src/types.ts"
     ],
     "report": "docs/results/phase7-select-chat-compare.md",
-    "reportLabel": "이번 다중 센서 기간 비교 기록 ↗"
+    "reportLabel": "다중 센서 기간 비교 기록 ↗"
   },
   "forecast": {
     "title": "미래 데이터를 보지 않고 5분 뒤를 평가",
-    "description": "공장 지도 아래에서 현재 온도와 5분 예측을 함께 봅니다. 시간순 학습·검증·시험을 나누고 Naive와 선형 모델을 같은 시험 구간에서 비교합니다.",
+    "description": "공장 아래에서 현재 온도와 5분 뒤 예측을 함께 봅니다. 과거 데이터로 학습하고 뒤쪽 기간으로 시험합니다. 현재 온도를 그대로 유지하는 단순 예측(Naive)과 비교해 오차도 보여줍니다.",
     "steps": [
       [
         "시간순 분리",
@@ -217,13 +229,13 @@
       ],
       [
         "서버 추론",
-        "cutoff · 데이터 해시",
+        "허용 시각 · 원본 파일 일치 확인",
         "backend/app/forecast/service.py",
         "forecast"
       ],
       [
         "화면·AI 조회",
-        "추론값과 평가 결과",
+        "예측값과 시험 오차",
         "frontend/src/ForecastPanel.tsx",
         "ForecastPanel.tsx"
       ]

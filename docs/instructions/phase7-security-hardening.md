@@ -1,6 +1,8 @@
 # Phase 7 보안 보완
 
-## 구현 전 계약
+## 현재 계약
+
+로그인한 사용자가 무엇을 할 수 있고 어떤 기록을 볼 수 있는지 정한다. 로그인 상태를 세션, 로그인한 사용자 정보를 `Principal`이라고 부른다. AI 조회 기록은 Trace, 승인·변경 기록은 Audit다.
 
 ```text
 Login(user_id, access_key)
@@ -8,23 +10,23 @@ Login(user_id, access_key)
   → Principal(user_id, role: viewer | operator)
 
 HTTP / WS
-  → Origin + Host + body/rate limits
-  → session validation
-  → operation role + resource ownership
+  → 접속 주소·서버 주소(Origin·Host), 본문 크기·요청 수 검사
+  → 로그인 상태 확인
+  → 역할과 기록 소유자 확인
 
-AgentQuery + Principal + frozen observation context
-  → bounded model work
-  → Trace(owner, created_at, run_id, sequence, selected_tag, status)
+AgentQuery + Principal + 질문 시점의 관측값
+  → 동시 모델 작업 수 제한
+  → Trace(owner, created_at, context: {run_id, sequence, tag}, snapshot_status)
 
-ProposalRequest(trace_id, intent) + Principal
-  → owned, fresh, same-run evidence
-  → single-use evidence + immutable proposal
+ProposalRequest(source_trace_id, intent) + Principal
+  → 본인의 유효한 근거이며 같은 재생 실행인지 확인
+  → 근거는 1회 사용, 제안 값은 승인 요청에서 변경 금지
 Decision(confirm, approve, expected_revision) + Principal
-  → ownership + evidence revalidation + transaction + identified Audit
+  → 소유자·근거 재확인, 값 변경과 Audit를 함께 저장
 
-Kafka admin → Topic/ACL initialization
-Kafka producer → SASL + write-only Topic permission
-Kafka consumer → SASL + read-only Topic/group permission
+Kafka 관리자 → 토픽·접근 권한(ACL) 준비
+Kafka 생산자 → SASL 인증 + 해당 토픽 쓰기만 허용
+Kafka 소비자 → SASL 인증 + 해당 토픽·그룹 읽기만 허용
 ```
 
 관측은 공통 보일러 데이터이며 인증 사용자가 함께 조회한다. 사용자 질문·Trace·제안·Audit는 사용자별로 분리한다.
@@ -46,7 +48,7 @@ operator가 본인의 제안을 직접 승인하는 현재 데모 범위를 유�
 실제 Kafka·Ollama·FastAPI·브라우저·SQLite를 사용한 E2E로 검증한다. 테스트 자격은 메모리에서 생성하고 결과에 기록하지 않는다.
 기존 phase7 아티팩트와 별도로 보안 차단 상태·한도·소유권 관측을 JSON에 남긴다.
 새 패키지를 설치하거나 lock을 변경하지 않는다. 실제 `.env`와 자격 파일은 읽거나 덮어쓰지 않는다.
-기존 무인증 경로의 200/연결 성공 관측을 401/403/429 등의 서버 차단 검증으로 교체한다.
+익명·권한 부족·한도 초과는 401/403/429 등의 서버 차단으로 검증한다. 인증 도입 전의 성공 기록을 현재의 접근 허용 계약으로 해석하지 않는다.
 
 ## 입력과 오류 경계
 

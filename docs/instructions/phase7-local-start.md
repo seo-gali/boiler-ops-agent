@@ -16,11 +16,11 @@ npm start → uv → scripts/start.py
 
 ## 호출 계약
 
-- `main(config_dir: Path, no_browser: bool) -> int`: 성공 종료 0, 준비·실행 실패 1. 설정 경로 변경은 격리된 로컬 실행에도 사용한다.
-- `Runner.start(args: list[str], name: str) -> Popen`: 비밀을 인수에 넣지 않고 환경으로 전달. 자식 로그는 `artifacts/local-start/`에 보관한다.
-- `Runner.wait_ready(probe: Callable[[], bool], label: str, timeout: int)`: 제한 시간과 자식 조기 종료를 확인한다.
+- `main(config_dir, no_browser, reset_key=False)`: 성공 종료 0, 준비·실행 실패 1. 설정 경로 변경은 격리된 로컬 실행에도 사용한다.
+- `Runner.start(args, name, *, transient=False, console=False, cwd=ROOT)`: 비밀을 인수에 넣지 않고 환경으로 전달. 자식 로그는 `artifacts/local-start/`에 보관한다.
+- `Runner.wait_ready(probe, label, timeout=60)`: 제한 시간과 자식 조기 종료를 확인한다.
 - `Runner.close()`: 자신이 시작한 자식 트리만 종료한다. 이미 실행 중이던 Kafka·Ollama는 유지한다. 새로 시작한 Kafka는 stop만 하고 삭제하지 않는다.
-- 루트 `package.json`에는 의존성이 없는 `start` 스크립트만 추가한다. lock 파일을 추가·수정하지 않는다.
+- 루트 `package.json`의 `start`와 `start:reset-key`는 기존 `uv run --frozen` 진입점을 사용한다. Python은 `uv.lock`, 화면 의존성은 `frontend/package-lock.json`을 사용한다.
 - `.env.security`가 없을 때 기존 발급 도구를 실행한다. 키 원문은 사용자 터미널에 한 번만 표시하고 실행 로그·검증 아티팩트에는 저장하지 않는다.
 - 사용자 요청(2026-10-10): `npm run start:reset-key` → `start.py --reset-key` → `setup-security.py --reset-user operator`. 기존 설정이 있으면 유효성을 검사한 뒤 해당 사용자의 `key_hash`만 원자적으로 교체한다. ID·역할·다른 사용자·Kafka 자격은 유지한다.
 - 기존 API 포트가 사용 중이거나 `AUTH_USERS_JSON` 환경 변수가 파일보다 우선하면 키 변경 전에 중단한다. 없는 사용자나 손상된 계정 설정도 새 계정으로 자동 대체하지 않는다.

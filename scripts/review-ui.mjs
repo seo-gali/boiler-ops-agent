@@ -232,6 +232,10 @@ async function reviewDocumentation() {
     await page.getByRole('button', { name: 'query_agent', exact: false }).click();
     assert.ok((await page.getByRole('dialog').locator('pre').textContent()).includes('def query_agent('));
     await page.keyboard.press('Escape');
+    await page.getByRole('button', { name: 'ChatExplorer.tsx', exact: false }).click();
+    assert.ok((await page.getByRole('dialog').locator('pre').textContent()).includes('export function ChatExplorer('));
+    await page.keyboard.press('Escape');
+    results.checks.push('AI drilldown code map opens the current ChatExplorer source');
     const answerReview = page.getByRole('button', { name: '다섯 질문의 실제 답변과 검수 기록', exact: false });
     await answerReview.click();
     const answerTable = await page.getByRole('dialog').locator('table').first().innerText();
@@ -244,7 +248,7 @@ async function reviewDocumentation() {
     await page.keyboard.press('Escape');
     assert.equal(await answerReview.evaluate(element => element === document.activeElement), true);
     results.checks.push('Five-question Agent report opens in-page; mobile reader fits; focus returns to report button');
-    await page.locator('button[data-doc="docs/results/phase7-workspace.md"]').first().click();
+    await page.locator('button[data-doc="docs/results/phase7-workspace.md"]:visible').first().click();
     await page.getByRole('dialog').getByRole('heading', { name: '단위의 출처와 데이터 경계', exact: true }).waitFor();
     assert.ok((await page.getByRole('dialog').innerText()).includes('118'));
     await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => { image.loading = 'eager'; return image.decode(); })));
@@ -252,7 +256,7 @@ async function reviewDocumentation() {
     assert.equal(await page.getByRole('dialog').evaluate(element => element.scrollWidth > element.clientWidth + 1), false);
     await page.keyboard.press('Escape');
     results.checks.push('Workspace result, source units and screenshots open in the same page at 320px');
-    await page.locator('button[data-doc="docs/results/phase7-game-chat-history.md"]').first().click();
+    await page.locator('button[data-doc="docs/results/phase7-game-chat-history.md"]:visible').first().click();
     await page.getByRole('dialog').getByRole('heading', { name: '이번 검증 기록', exact: true }).waitFor();
     assert.ok((await page.getByRole('dialog').innerText()).includes('50,400'));
     await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => { image.loading = 'eager'; return image.decode(); })));
@@ -261,7 +265,7 @@ async function reviewDocumentation() {
     await page.screenshot({ path: resolve(output, 'docs-game-chat-history-320.png'), fullPage: true });
     await page.keyboard.press('Escape');
     results.checks.push('Current game, chat and period-history result and screenshots open in the same page at 320px');
-    await page.locator('button[data-doc="docs/results/phase7-select-chat-compare.md"]').first().click();
+    await page.locator('button[data-doc="docs/results/phase7-select-chat-compare.md"]:visible').first().click();
     await page.getByRole('dialog').getByRole('heading', { name: '이번 검증 기록', exact: true }).waitFor();
     assert.ok((await page.getByRole('dialog').innerText()).includes('10,845'));
     await page.getByRole('dialog').getByRole('img').evaluateAll(images => Promise.all(images.map(image => { image.loading = 'eager'; return image.decode(); })));
