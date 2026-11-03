@@ -4,7 +4,6 @@ import json
 import re
 import shutil
 import xml.etree.ElementTree as ET
-from functools import lru_cache
 from pathlib import Path
 from urllib.parse import quote
 
@@ -25,10 +24,12 @@ FILES = [
     'docs/results/phase7-select-chat-compare.md',
     'docs/results/phase7-performance.md',
     'docs/results/phase7-operational-reliability.md',
+    'docs/results/phase7-data-oriented.md',
     'docs/fonts/README.md',
     'docs/brand.css',
-    'backend/app/main.py', 'backend/app/security.py', 'backend/app/observability.py', 'backend/app/replay/producer.py',
+    'backend/app/main.py', 'backend/app/security.py', 'backend/app/observability.py', 'backend/app/replay/producer.py', 'backend/app/replay/csv_source.py',
     'backend/app/domain/state.py', 'backend/app/domain/history.py', 'backend/app/streaming/consumer.py',
+    'backend/app/websocket/hub.py',
     'backend/app/domain/registry.py', 'backend/app/domain/sensor_definitions.json',
     'backend/app/agent/tools.py', 'backend/app/agent/service.py', 'backend/app/agent/traces.py',
     'backend/app/agent/answers.py',
@@ -45,7 +46,6 @@ FILES = [
 ]
 
 
-@lru_cache(maxsize=64)
 def image_dimensions(path):
     """문서 JPEG의 프레임 크기만 읽어 원본 비율 보존."""
     with path.open('rb') as source:

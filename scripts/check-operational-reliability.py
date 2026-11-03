@@ -78,7 +78,7 @@ async def csv_capacity():
     lock = threading.Lock()
     entered = 0
 
-    def blocked(settings):
+    def blocked(settings, *args):
         nonlocal entered
         with lock:
             entered += 1
@@ -87,7 +87,7 @@ async def csv_capacity():
 
     query = {"tag": "raw-tag ", "start": "2025-03-01T00:00", "end": "2025-03-02T00:00"}
     main.app.state.boiler = SimpleNamespace(settings=None, registry={"raw-tag ": {"unit": "°C"}})
-    with patch.object(main, "history_metadata", blocked), patch.object(main, "history_range", return_value={"ok": True}):
+    with patch.object(main, "history_metadata", blocked), patch.object(main, "history_range", blocked):
         pending = [asyncio.create_task(request("/api/history/metadata")), asyncio.create_task(request("/api/history/range", query=query))]
         try:
             deadline = time.monotonic() + 2

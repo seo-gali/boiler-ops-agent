@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Equipment, Registry, Sensor } from './types';
 import { formatValue, useTelemetry } from './telemetry';
 import { sensorArea, sensorAreas } from './sensor-catalog';
@@ -7,7 +7,7 @@ import './equipment-sensors.css';
 export function EquipmentSensors({ item, registry, selected, onSelect, onClose, onInspect }: { item: Equipment; registry: Registry; selected: string | null; onSelect: (tag: string) => void; onClose: () => void; onInspect?: (tag: string) => void }) {
   const telemetry = useTelemetry();
   const [area, setArea] = useState('all');
-  const sensors = useMemo(() => Object.values(registry.sensors).filter(sensor => sensor.equipment === item.id), [registry, item.id]);
+  const sensors = Object.values(registry.sensors).filter(sensor => sensor.equipment === item.id);
   useEffect(() => setArea('all'), [item.id]);
   const filtered = sensors.filter(sensor => area === 'all' || sensorArea(sensor) === area);
   const areas = sensorAreas(sensors);

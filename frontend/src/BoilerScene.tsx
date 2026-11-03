@@ -1,4 +1,4 @@
-import { Component, memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Component, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { CatmullRomCurve3, Mesh, OrthographicCamera, Vector3 } from 'three';
@@ -50,7 +50,7 @@ class SceneBoundary extends Component<{ children: ReactNode; fallback: ReactNode
   render() { return this.state.failed ? this.props.fallback : this.props.children; }
 }
 
-const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onSelect, onHover }: { item: Equipment; selected: boolean; hovered: boolean; onSelect: (id: string) => void; onHover: (id: string | null) => void }) {
+function EquipmentMesh({ item, selected, hovered, onSelect, onHover }: { item: Equipment; selected: boolean; hovered: boolean; onSelect: (id: string) => void; onHover: (id: string | null) => void }) {
   const [x, , z] = item.position;
   const [w, h, d] = item.size;
   const colors = equipmentColors[item.id] ?? equipmentColors.stack;
@@ -110,29 +110,31 @@ const EquipmentMesh = memo(function EquipmentMesh({ item, selected, hovered, onS
     <mesh position={[0, .04, 0]} receiveShadow><boxGeometry args={[w + .65, .13, d + .65]} /><meshStandardMaterial color={selected ? scenePalette['border-control'] : scenePalette['surface-selected']} /></mesh>
     {selected && <mesh position={[0, .13, 0]} rotation={[-Math.PI / 2, 0, 0]}><ringGeometry args={[Math.max(w, d) * .7, Math.max(w, d) * .7 + .12, 40]} /><meshBasicMaterial color={scenePalette.accent} /></mesh>}
   </group>;
-});
+}
 
 function FlowDecoration({ flow, equipment, index, animate }: { flow: Registry['flows'][number]; equipment: Equipment[]; index: number; animate: boolean }) {
-  const dots = useRef<(Mesh | null)[]>([]);
+  const dots = useRef<[Mesh | null, Mesh | null, Mesh | null]>([null, null, null]);
   const progress = useRef(0);
-  const curve = useMemo(() => new CatmullRomCurve3(flow.equipment.flatMap(id => {
+  const [curve] = useState(() => new CatmullRomCurve3(flow.equipment.flatMap(id => {
     const item = equipment.find(item => item.id === id);
     return item ? [new Vector3(item.position[0], .24 + index * .12, item.position[2])] : [];
-  }), false, 'catmullrom', .1), [flow, equipment, index]);
+  }), false, 'catmullrom', .1));
   useFrame((_, delta) => {
     if (!animate) return;
     const elapsed = Number.isFinite(delta) ? Math.max(0, Math.min(delta, .05)) : 0;
     progress.current = (progress.current + elapsed * .04) % 1;
-    dots.current.forEach((dot, i) => dot?.position.copy(curve.getPointAt((progress.current + i / 3) % 1)));
+    dots.current.forEach((dot, i) => dot && curve.getPoint((progress.current + i / 3) % 1, dot.position));
   });
   const color = index === 0 ? '#d38542' : '#399bbb';
   return <group>
     <mesh><tubeGeometry args={[curve, 80, .075, 8, false]} /><meshStandardMaterial color={color} roughness={.5} /></mesh>
-    {[0, 1, 2].map(i => <mesh key={i} ref={mesh => { dots.current[i] = mesh; }} position={curve.getPointAt(i / 3)}><sphereGeometry args={[.11, 10, 10]} /><meshBasicMaterial color={index === 0 ? '#ffe69b' : '#dafaff'} /></mesh>)}
+    {[0, 1, 2].map(i => <mesh key={i} ref={mesh => { dots.current[i] = mesh; }} position={curve.getPoint(i / 3)}><sphereGeometry args={[.11, 10, 10]} /><meshBasicMaterial color={index === 0 ? '#ffe69b' : '#dafaff'} /></mesh>)}
   </group>;
 }
 
-function SceneCamera({ zoom, pan, markers, equipment, scale, onProject }: { zoom: number; pan: Pan; markers: Sensor[]; equipment: Equipment[]; scale: { current: number }; onProject: (points: Point[]) => void }) {
+function SceneCamera({ zoom, pan, registry, scale, onProject }: { zoom: number; pan: Pan; registry: Registry; scale: { current: number }; onProject: (points: Point[]) => void }) {
+  const equipment = registry.equipment;
+  const markers = equipment.flatMap(item => { const sensor = registry.sensors[item.primary_tag]; return sensor?.scene_position ? [sensor] : []; });
   const { camera, size, invalidate } = useThree();
   useLayoutEffect(() => {
     if (!size.width || !size.height) return;
@@ -163,7 +165,7 @@ function SceneCamera({ zoom, pan, markers, equipment, scale, onProject }: { zoom
       return { tag: sensor.tag, x: (vector.x + 1) * size.width / 2, y: (-vector.y + 1) * size.height / 2, equipmentX: (center.x + 1) * size.width / 2, equipmentY: (-center.y + 1) * size.height / 2 };
     }));
     invalidate();
-  }, [camera, size.width, size.height, zoom, pan, markers, equipment, scale, onProject, invalidate]);
+  }, [camera, size.width, size.height, zoom, pan, registry, scale, onProject, invalidate]);
   return null;
 }
 
@@ -177,19 +179,25 @@ function MarkerLabel({ sensor, equipment, index, selected, equipmentSelected, on
   </button>;
 }
 
+function SelectedSensor({ registry, selected, onInspect }: { registry: Registry; selected: string | null; onInspect?: (tag: string) => void }) {
+  const telemetry = useTelemetry(), reading = useReading(selected ?? '');
+  const sensor = registry.sensors[selected ?? ''];
+  return <div className="scene-selection" data-testid="scene-selected">{sensor ? <><span className="scene-selection-path">{sensorCategoryName(sensor, registry)}</span><strong>{sensor.label}</strong><b>{formatValue(reading)} <small>{sensor.unit ?? '단위 미확인'}</small></b><span className="scene-selection-time">원본 시각 {telemetry.current?.source_time ?? '수신 대기'}</span>{onInspect && <button onClick={() => onInspect(sensor.tag)}>자세히 →</button>}</> : <span>설비를 누르면 현재값과 센서 목록을 확인할 수 있습니다.</span>}</div>;
+}
+
 function SceneFallback() {
   const telemetry = useTelemetry();
   return <div className="fallback"><b>3D 화면을 표시할 수 없습니다</b><p>위의 설비 목록에서 모든 그룹을 선택할 수 있습니다.</p><span>{telemetry.status} · Kafka {telemetry.kafka}</span></div>;
 }
 
-const SceneCanvas = memo(function SceneCanvas({ registry, selected, selectedEquipment, hovered, zoom, pan, markers, cameraScale, animate, onEquipment, onSensor, onHover, onProject, onLost }: {
+function SceneCanvas({ registry, selected, selectedEquipment, hovered, zoom, pan, markers, cameraScale, animate, onEquipment, onSensor, onHover, onProject, onLost }: {
   registry: Registry; selected: string | null; selectedEquipment?: string; hovered: string | null; zoom: number; pan: Pan; markers: Sensor[];
   cameraScale: { current: number }; animate: boolean; onEquipment: (id: string) => void; onSensor: (tag: string) => void;
   onHover: (id: string | null) => void; onProject: (points: Point[]) => void; onLost: (lost: boolean) => void;
 }) {
   const fallback = <SceneFallback />;
   return <SceneBoundary fallback={fallback}><Canvas orthographic camera={{ position: [14, 12, 17], near: .1, far: 100 }} shadows frameloop={animate ? 'always' : 'demand'} fallback={fallback} onCreated={({ gl }) => { gl.domElement.setAttribute('aria-hidden', 'true'); gl.domElement.addEventListener('webglcontextlost', event => { event.preventDefault(); onLost(true); }); }}>
-    <SceneCamera zoom={zoom} pan={pan} markers={markers} equipment={registry.equipment} scale={cameraScale} onProject={onProject} />
+    <SceneCamera zoom={zoom} pan={pan} registry={registry} scale={cameraScale} onProject={onProject} />
     <color attach="background" args={[scenePalette.page]} /><ambientLight intensity={1.8} /><directionalLight position={[5, 12, 6]} intensity={2.2} castShadow />
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -.07, 0]} receiveShadow><planeGeometry args={[30, 28]} /><meshStandardMaterial color={scenePalette.surface} /></mesh>
     <mesh position={[0, -.06, .5]} receiveShadow><boxGeometry args={[22, .12, 20]} /><meshStandardMaterial color={scenePalette['surface-soft']} /></mesh>
@@ -198,10 +206,10 @@ const SceneCanvas = memo(function SceneCanvas({ registry, selected, selectedEqui
     {registry.equipment.map(item => <EquipmentMesh key={item.id} item={item} selected={selectedEquipment === item.id} hovered={hovered === item.id} onSelect={onEquipment} onHover={onHover} />)}
     {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); onSensor(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? scenePalette.accent : equipmentColors[sensor.equipment]?.body ?? scenePalette.text} /></mesh>)}
   </Canvas></SceneBoundary>;
-});
+}
 SceneCanvas.displayName = 'SceneCanvas';
 
-export const BoilerViewport = memo(function BoilerViewport({ registry, selected, onSelect, onEquipment, onInspect, active = true }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void; onEquipment: (id: string) => void; onInspect?: (tag: string) => void; active?: boolean }) {
+export function BoilerViewport({ registry, selected, onSelect, onEquipment, onInspect, active = true }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void; onEquipment: (id: string) => void; onInspect?: (tag: string) => void; active?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<Pan>({ x: 0, y: 0 });
@@ -216,14 +224,12 @@ export const BoilerViewport = memo(function BoilerViewport({ registry, selected,
   const cameraScale = useRef(1);
   const space = useRef(false), inside = useRef(false), dragged = useRef(false);
   const drag = useRef<{ id: number; x: number; y: number } | null>(null);
-  const telemetry = useTelemetry();
-  const markers = useMemo(() => registry.equipment.flatMap(item => {
+  const markers = registry.equipment.flatMap(item => {
     const sensor = registry.sensors[item.primary_tag];
     return sensor?.scene_position ? [sensor] : [];
-  }), [registry]);
+  });
   const selectedSensor = registry.sensors[selected ?? ''];
   const selectedEquipment = selectedSensor?.equipment;
-  const selectedReading = useReading(selected ?? '');
   const popupItem = registry.equipment.find(item => item.id === popupEquipment);
   const animate = active && visible && motionAllowed;
   useEffect(() => {
@@ -236,10 +242,9 @@ export const BoilerViewport = memo(function BoilerViewport({ registry, selected,
     update(); preference.addEventListener('change', update); document.addEventListener('visibilitychange', visibility);
     return () => { preference.removeEventListener('change', update); document.removeEventListener('visibilitychange', visibility); };
   }, []);
-  const equipmentCounts = useMemo(() => Object.values(registry.sensors).reduce<Record<string, number>>((counts, sensor) => {
-    counts[sensor.equipment] = (counts[sensor.equipment] ?? 0) + 1; return counts;
-  }, {}), [registry]);
-  const slots = useMemo(() => labelSlots(markers.length, dimensions.width, dimensions.height), [markers.length, dimensions]);
+  const equipmentCounts = new Uint16Array(registry.equipment.length);
+  for (const sensor of Object.values(registry.sensors)) { const index = registry.equipment.findIndex(item => item.id === sensor.equipment); if (index >= 0) equipmentCounts[index]++; }
+  const slots = labelSlots(markers.length, dimensions.width, dimensions.height);
   useLayoutEffect(() => {
     const element = box.current;
     if (!element) return;
@@ -248,11 +253,11 @@ export const BoilerViewport = memo(function BoilerViewport({ registry, selected,
     resize(); observer.observe(element);
     return () => observer.disconnect();
   }, []);
-  const stop = useCallback(() => {
+  const stop = () => {
     space.current = false; setMoving(false);
     if (drag.current && box.current?.hasPointerCapture(drag.current.id)) box.current.releasePointerCapture(drag.current.id);
     drag.current = null;
-  }, []);
+  };
   useEffect(() => {
     const keydown = (event: KeyboardEvent) => {
       if (event.code !== 'Space' || event.ctrlKey || event.metaKey || event.altKey) return;
@@ -266,7 +271,7 @@ export const BoilerViewport = memo(function BoilerViewport({ registry, selected,
     window.addEventListener('keydown', keydown); window.addEventListener('keyup', keyup);
     window.addEventListener('blur', stop); document.addEventListener('visibilitychange', stop); document.addEventListener('focusin', focus);
     return () => { window.removeEventListener('keydown', keydown); window.removeEventListener('keyup', keyup); window.removeEventListener('blur', stop); document.removeEventListener('visibilitychange', stop); document.removeEventListener('focusin', focus); };
-  }, [stop]);
+  }, []);
   useEffect(() => {
     const element = box.current;
     const wheel = (event: WheelEvent) => {
@@ -281,14 +286,14 @@ export const BoilerViewport = memo(function BoilerViewport({ registry, selected,
   const reset = () => { setZoom(1); setPan({ x: 0, y: 0 }); stop(); };
   const names = Object.fromEntries(registry.equipment.map(item => [item.id, item.name]));
   const describedEquipment = registry.equipment.find(item => item.id === (hovered ?? selectedEquipment));
-  const chooseEquipment = useCallback((id: string) => { setPopupEquipment(id); onEquipment(id); }, [onEquipment]);
-  const chooseSensor = useCallback((tag: string) => { const id = registry.sensors[tag]?.equipment; if (registry.equipment.some(item => item.id === id)) setPopupEquipment(id); onSelect(tag); }, [registry, onSelect]);
+  const chooseEquipment = (id: string) => { setPopupEquipment(id); onEquipment(id); };
+  const chooseSensor = (tag: string) => { const id = registry.sensors[tag]?.equipment; if (registry.equipment.some(item => item.id === id)) setPopupEquipment(id); onSelect(tag); };
   const closeEquipment = () => { const id = popupEquipment; setPopupEquipment(null); document.getElementById(`equipment-${id}`)?.focus({ preventScroll: true }); };
   return <section className="viewport game-viewport panel" aria-label="보일러 계통도" data-animation={animate ? 'decorative' : 'paused'}>
     <div className="panel-heading"><div><span className="eyebrow">BOILER WORLD</span><h2>내 보일러 탐색하기</h2></div><span className="quiet">{registry.equipment.length}개 설비 그룹 · 논리 배치</span></div>
-    <nav className="equipment-nav" aria-label="설비 선택">{registry.equipment.map((item, index) => <button key={item.id} id={`equipment-${item.id}`} style={equipmentStyle(item.id)} aria-label={`${String(index + 1).padStart(2, '0')} ${item.name}`} aria-pressed={selectedEquipment === item.id} onClick={() => chooseEquipment(item.id)} onPointerEnter={() => setHovered(item.id)} onPointerLeave={() => setHovered(null)} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)}><span className="equipment-game-icon" aria-hidden="true">{equipmentColors[item.id]?.icon ?? '▣'}</span><b>{item.name}</b><small>센서 {equipmentCounts[item.id] ?? 0}</small></button>)}</nav>
+    <nav className="equipment-nav" aria-label="설비 선택">{registry.equipment.map((item, index) => <button key={item.id} id={`equipment-${item.id}`} style={equipmentStyle(item.id)} aria-label={`${String(index + 1).padStart(2, '0')} ${item.name}`} aria-pressed={selectedEquipment === item.id} onClick={() => chooseEquipment(item.id)} onPointerEnter={() => setHovered(item.id)} onPointerLeave={() => setHovered(null)} onFocus={() => setHovered(item.id)} onBlur={() => setHovered(null)}><span className="equipment-game-icon" aria-hidden="true">{equipmentColors[item.id]?.icon ?? '▣'}</span><b>{item.name}</b><small>센서 {equipmentCounts[index]}</small></button>)}</nav>
     <p className="equipment-description">{describedEquipment ? <><b>{describedEquipment.name}</b> {describedEquipment.description}</> : '설비를 선택하면 해당 그룹의 센서를 살펴볼 수 있습니다. 이름표는 각 그룹의 대표 센서입니다.'}</p>
-    <div className="scene-selection" data-testid="scene-selected">{selectedSensor ? <><span className="scene-selection-path">{sensorCategoryName(selectedSensor, registry)}</span><strong>{selectedSensor.label}</strong><b>{formatValue(selectedReading)} <small>{selectedSensor.unit ?? '단위 미확인'}</small></b><span className="scene-selection-time">원본 시각 {telemetry.current?.source_time ?? '수신 대기'}</span>{onInspect && !popupItem && <button onClick={() => onInspect(selectedSensor.tag)}>자세히 →</button>}</> : <span>설비를 누르면 현재값과 센서 목록을 확인할 수 있습니다.</span>}</div>
+    <SelectedSensor registry={registry} selected={selected} onInspect={!popupItem ? onInspect : undefined} />
     <p id="scene-help" className="note scene-help"><span><kbd>Space</kbd> + 드래그 이동 · 휠 확대·축소</span><span>색상은 설비 구분 · 움직임은 흐름 이해용 장식</span></p>
     <div className={`game-scene-shell ${popupItem ? 'has-equipment-popup' : ''}`}>
     <div className={`scene ${dimensions.width < 650 ? 'compact-markers' : ''} ${moving ? 'panning' : ''}`} ref={box} tabIndex={0} aria-label="계통도 화면" aria-describedby="scene-help"
@@ -336,4 +341,4 @@ export const BoilerViewport = memo(function BoilerViewport({ registry, selected,
     </div>
     <div className="scene-flow-caption" aria-label="논리 계통 흐름">{registry.flows.map(flow => <p key={flow.id}><b>{flow.label}</b><span>{flow.equipment.map(id => names[id] ?? id).join(' → ')}</span></p>)}</div>
   </section>;
-});
+}

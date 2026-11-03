@@ -3,6 +3,7 @@ from datetime import datetime
 from uuid import UUID
 from contextlib import asynccontextmanager, contextmanager, suppress
 from threading import BoundedSemaphore
+from types import SimpleNamespace
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request, Response
 
@@ -16,7 +17,7 @@ from backend.app.config import Settings
 from backend.app.domain.registry import EQUIPMENT, PROCESS_FLOWS, make_registry
 from backend.app.domain.state import BoilerState
 from backend.app.domain.analysis import loop_analysis, sensor_summary
-from backend.app.domain.history import metadata as history_metadata, query_range as history_range
+from backend.app.domain.history import HistoryTimezoneMismatch, metadata as history_metadata, query_range as history_range
 from backend.app.agent.tools import ReadTools
 from backend.app.agent.service import AgentQuery, AgentFailure, query_agent
 from backend.app.forecast.service import forecast
@@ -153,10 +154,9 @@ def source_history_range(tag: str, start: datetime, end: datetime, limit: int = 
         raise HTTPException(422, "종료 시각은 시작 시각보다 빠를 수 없습니다.")
     try:
         with reserve_history():
-            source = history_metadata(boiler.settings)
-            if source['first_time'] and (start.utcoffset() is None) != (source['timezone_offset'] is None):
-                raise HTTPException(422, "조회 시각의 시간대 형식이 CSV 원본과 다릅니다.")
             return history_range(boiler.settings, tag, boiler.registry[tag]['unit'], start, end, limit)
+    except HistoryTimezoneMismatch as error:
+        raise HTTPException(422, str(error)) from error
     except (OSError, ValueError, TypeError, KeyError) as error:
         raise HTTPException(503, "원본 CSV를 읽을 수 없습니다. 파일과 센서·일자 형식을 확인하세요.") from error
 
@@ -172,7 +172,10 @@ async def analysis_sensor(tag: str):
 @app.get("/api/forecast")
 async def temperature_forecast():
     try:
-        return forecast(app.state.boiler)
+        boiler = app.state.boiler
+        snapshot = boiler.snapshot()
+        observation = SimpleNamespace(current=boiler.current, registry=boiler.registry, snapshot=lambda: snapshot)
+        return await run_in_threadpool(forecast, observation)
     except ValueError as error:
         raise HTTPException(409, str(error)) from error
 
@@ -180,7 +183,8 @@ async def temperature_forecast():
 @app.get("/api/tools/{name}")
 async def read_tool(name: str, equipment: str, tag: str | None = None):
     try:
-        return ReadTools(app.state.boiler, equipment, tag).call(name)
+        tools = ReadTools(app.state.boiler, equipment, tag)
+        return await run_in_threadpool(tools.call, name)
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
 
@@ -201,7 +205,7 @@ async def agent_query(request: AgentQuery, http: Request):
 
 
 @app.get("/api/agent/traces/{trace_id}")
-async def agent_trace(trace_id: UUID, request: Request):
+def agent_trace(trace_id: UUID, request: Request):
     return app.state.traces.read(trace_id, request.state.principal)
 
 

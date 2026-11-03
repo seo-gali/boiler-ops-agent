@@ -52,7 +52,7 @@
 </ul>
 <h3>SEC-02 — WebSocket 인증·Origin 검사 부재</h3>
 <ul>
-<li><strong>심각도:</strong> High. <strong>컴포넌트:</strong> <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/main.py">main.py</a>의 <code>websocket</code>, hub.py.</li>
+<li><strong>심각도:</strong> High. <strong>컴포넌트:</strong> <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/main.py">main.py</a>의 <code>websocket</code>, <a href="https://github.com/seo-gali/boiler-ops-agent/blob/main/backend/app/websocket/hub.py">hub.py</a>.</li>
 <li><strong>설명:</strong> <code>/api/ws</code>는 <code>ws.accept()</code>부터 실행하며 인증과 Origin allowlist 검사를 하지 않는다. HTTP 응답에 CORS 허용 헤더가 없다는 사실은 WebSocket 보호 근거가 아니다. 현재는 세션 탈취보다 <strong>무인증 교차 출처 읽기</strong>가 정확한 표현이다.</li>
 <li><strong>공격 순서:</strong> ① 서비스에 네트워크로 접근할 수 있는 브라우저에서 다른 Origin의 페이지 방문 → ② <code>new WebSocket(...)</code> 생성 → ③ initial snapshot과 이후 telemetry 읽기. 연결 수 제한 부재와 결합하면 지속적인 자원 소모 가능.</li>
 <li><strong>영향:</strong> 악성 사이트가 실시간 관측 데이터 수집. 브라우저의 mixed-content·Private Network Access 정책에 따라 공용 사이트→loopback 공격 가능성은 달라진다. 로컬 서로 다른 포트의 실제 Origin 경계를 검증 대상으로 삼았다.</li>

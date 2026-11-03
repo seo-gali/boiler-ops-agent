@@ -14,8 +14,8 @@ def columns(settings: Settings) -> list[str]:
     return header
 
 
-def rows(settings: Settings):
-    header = columns(settings)
+def records(settings: Settings, header: list[str]):
+    time_index = header.index(settings.time_column)
     previous = None
     with settings.dataset.open(encoding=settings.encoding, newline="") as source:
         reader = csv.reader(source)
@@ -23,8 +23,7 @@ def rows(settings: Settings):
         for sequence, cells in enumerate(reader, 1):
             if len(cells) != len(header):
                 raise ValueError(f"CSV row {sequence + 1}: expected {len(header)} columns, got {len(cells)}")
-            values = dict(zip(header, cells, strict=True))
-            source_time = values.pop(settings.time_column)
+            source_time = cells[time_index]
             try:
                 instant = datetime.fromisoformat(source_time)
             except ValueError as error:
@@ -32,4 +31,10 @@ def rows(settings: Settings):
             if previous is not None and instant <= previous:
                 raise ValueError(f"CSV row {sequence + 1}: source time must increase")
             previous = instant
-            yield sequence, source_time, values
+            yield sequence, source_time, instant, cells
+
+
+def rows(settings: Settings):
+    header = columns(settings)
+    for sequence, source_time, _, cells in records(settings, header):
+        yield sequence, source_time, {tag: raw for tag, raw in zip(header, cells, strict=True) if tag != settings.time_column}

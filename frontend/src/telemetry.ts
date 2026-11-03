@@ -22,9 +22,11 @@ function equalFields<T extends object>(left: T, right: T) {
 function shareCurrent(current: Telemetry | null, previous: Telemetry | null) {
   if (!current || !previous || current === previous) return current;
   const sensors = { ...current.sensors };
-  for (const [tag, reading] of Object.entries(sensors)) {
+  for (const tag in sensors) {
+    const reading = sensors[tag];
     const prior = previous.sensors[tag];
-    if (prior && equalFields(reading, prior)) sensors[tag] = prior;
+    if (prior && Object.is(reading.value, prior.value) && reading.raw === prior.raw
+      && reading.quality === prior.quality && reading.error === prior.error) sensors[tag] = prior;
   }
   const shared = { ...current, sensors: equalFields(sensors, previous.sensors) ? previous.sensors : sensors };
   return equalFields(shared, previous) ? previous : shared;

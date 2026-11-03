@@ -107,7 +107,7 @@ try {
     assert.equal(afterEvents.requests.history, afterFirst.requests.history, 'WebSocket observations reuse initial history');
     assert.equal(afterEvents.commits.reading, afterFirst.commits.reading, 'Unchanged readings preserve subscriptions');
     assert.deepEqual(afterHeartbeat, afterEvents, 'Repeated snapshots cause no requests or commits');
-    assert.equal(afterReopen.forecast, afterHeartbeat.requests.forecast, 'Reopening the same observation reuses forecast');
+    assert.equal(afterReopen.forecast, afterHeartbeat.requests.forecast + 1, 'Reopening reads forecast again without a response cache');
     assert.equal(await page.getByTestId('sensor-trend-source-row').count(), 3, 'Source-time window retains its two-minute bounds');
     await send(7, 'LIVE', 'missing');
     assert.equal(await page.locator('#reading').textContent(), 'empty', 'Missing values stay missing');

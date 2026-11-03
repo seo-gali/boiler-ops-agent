@@ -1,5 +1,5 @@
 import { apiFetch } from './session';
-import { memo, useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useEvents } from './telemetry';
 import type { Reading } from './types';
 import './sensor-trend.css';
@@ -13,7 +13,7 @@ function sourceTimeMilliseconds(value: string) {
   return Date.UTC(Number(wallTime[1]), Number(wallTime[2]) - 1, Number(wallTime[3]), Number(wallTime[4]), Number(wallTime[5]), Number(wallTime[6] ?? 0), Number((wallTime[7] ?? '').padEnd(3, '0').slice(0, 3)));
 }
 
-export const SensorTrend = memo(function SensorTrend({ tag, unit }: { tag: string; unit?: string | null }) {
+export function SensorTrend({ tag, unit }: { tag: string; unit?: string | null }) {
   const descriptionId = useId();
   const events = useEvents();
   const runId = events.at(-1)?.run_id;
@@ -25,14 +25,22 @@ export const SensorTrend = memo(function SensorTrend({ tag, unit }: { tag: strin
       .then(data => { if (!controller.signal.aborted) setHistory({ tag, runId, points: data.points, error: null }); }).catch(error => { if (!controller.signal.aborted && error.name !== 'AbortError') setHistory({ tag, runId, points: [], error: String(error) }); });
     return () => controller.abort();
   }, [tag, runId, gapSequence]);
-  const received = useMemo(() => {
-    const points = new Map<number, Point>();
-    if (history?.tag === tag && history.runId === runId) history.points.forEach(point => points.set(point.sequence, point));
-    events.forEach(event => {
-      if (event.sensors[tag]) points.set(event.sequence, { sequence: event.sequence, source_time: event.source_time, ...event.sensors[tag] });
-    });
-    return [...points.values()].sort((left, right) => left.sequence - right.sequence).slice(-120);
-  }, [events, history, runId, tag]);
+  const initial = history?.tag === tag && history.runId === runId ? history.points : [];
+  const merged: Point[] = [];
+  let left = 0, right = 0;
+  while (left < initial.length || right < events.length) {
+    const stored = initial[left], event = events[right];
+    if (!event || stored && stored.sequence < event.sequence) {
+      merged.push(initial[left++]);
+    } else {
+      if (stored?.sequence === event.sequence) left++;
+      right++;
+      const reading = event.sensors[tag];
+      if (reading) merged.push({ sequence: event.sequence, source_time: event.source_time, ...reading });
+      else if (stored?.sequence === event.sequence) merged.push(stored);
+    }
+  }
+  const received = merged.slice(-120);
   const error = history?.tag === tag && history.runId === runId ? history.error : null;
 
   const latestTime = sourceTimeMilliseconds(received.at(-1)?.source_time ?? '');
@@ -68,4 +76,4 @@ export const SensorTrend = memo(function SensorTrend({ tag, unit }: { tag: strin
       <details><summary>추이 원본값 표로 보기</summary><table data-testid="sensor-trend-source-table"><caption>{tag} · 최근 2분 원본 기록</caption><thead><tr><th scope="col">원본 시각</th><th scope="col">원본값 · {unit ?? '단위 정의 없음'}</th><th scope="col">상태</th></tr></thead><tbody>{points.map(point => <tr key={point.sequence} data-testid="sensor-trend-source-row"><td>{point.source_time}</td><td>{point.raw || '결측'}</td><td>{point.quality === 'valid' ? '원본 수신' : point.quality === 'parse_error' ? '파싱 오류' : '결측'}</td></tr>)}</tbody></table></details>
     </>}
   </div>;
-});
+}

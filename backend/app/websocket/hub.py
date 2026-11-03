@@ -5,7 +5,7 @@ class Hub:
     def __init__(self):
         self.queues = set()
 
-    async def publish(self, message):
+    def publish(self, message):
         for queue in tuple(self.queues):
             if queue.full():
                 while not queue.empty():

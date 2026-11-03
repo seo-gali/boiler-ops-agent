@@ -33,10 +33,17 @@ async def consume(settings, state, hub):
             checked = 0
             state.kafka = "CONNECTED"
             while True:
-                batches = await consumer.getmany(timeout_ms=500, max_records=50)
                 if time.monotonic() - checked > 1:
-                    await admin.describe_topics([settings.topic])
+                    # 연결 정리 전 두 읽기의 완료 보장.
+                    batches, metadata = await asyncio.gather(
+                        consumer.getmany(timeout_ms=500, max_records=50),
+                        admin.describe_topics([settings.topic]), return_exceptions=True)
+                    for result in (batches, metadata):
+                        if isinstance(result, BaseException):
+                            raise result
                     checked = time.monotonic()
+                else:
+                    batches = await consumer.getmany(timeout_ms=500, max_records=50)
                 state.kafka = "CONNECTED"
                 for messages in batches.values():
                     for message in messages:
@@ -50,12 +57,12 @@ async def consume(settings, state, hub):
                             logger.error(state.error)
                         else:
                             await consumer.commit({TopicPartition(message.topic, message.partition): OffsetAndMetadata(message.offset + 1, "")})
-                        await hub.publish(state.snapshot())
+                        hub.publish(state.snapshot())
         except (KafkaError, OSError, ValueError) as error:
             state.kafka = "DISCONNECTED"
             state.error = f"Kafka consumer: {type(error).__name__}: {error}"
             logger.warning(state.error)
-            await hub.publish(state.snapshot())
+            hub.publish(state.snapshot())
             await asyncio.sleep(1)
         finally:
             if admin is not None:

@@ -1,5 +1,5 @@
 import { useSession, apiFetch } from './session';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { connectTelemetry, formatValue, toggleUpdates, usePaused, useConnection, useReading, useTelemetry } from './telemetry';
 import type { Registry, Sensor } from './types';
 import type { WorkspaceTab } from './WorkspacePanel';
@@ -21,6 +21,28 @@ function KPI({ sensor, selected, onSelect }: { sensor: Sensor; selected: boolean
   return <button className="kpi" aria-pressed={selected} onClick={onSelect}><span>{sensor.label}</span><strong data-testid={`kpi-${sensor.tag}`}>{formatValue(value)}</strong><small>{sensor.unit ?? '단위 정의 없음'}</small></button>;
 }
 
+function RuntimeStatus() {
+  const telemetry = useTelemetry(), connection = useConnection();
+  const status = connection !== 'CONNECTED' ? connection : telemetry.status;
+  return <><div className="connections"><span>Kafka <b data-testid="kafka-status">{telemetry.kafka}</b></span><span>WebSocket <b data-testid="ws-status">{connection}</b></span><span>Replay <b>{telemetry.replay_interval_ms || '—'} ms</b></span></div><span className={`status ${status.toLowerCase()}`} data-testid="stream-status" role="status">● {status}</span></>;
+}
+
+function UpdateControls() {
+  const paused = usePaused();
+  return <div className="update-controls"><button onClick={toggleUpdates} aria-pressed={paused}>화면 자동 갱신 {paused ? '재개' : '일시정지'}</button><span role="status">{paused ? '화면만 멈춤' : '갱신 중'}</span></div>;
+}
+
+function ObservationHeading() {
+  const telemetry = useTelemetry();
+  return <><div className="page-heading"><div><span className="eyebrow">PLANT EXPLORER</span><h1>공장 모니터링 <span>과거 데이터 재생</span></h1></div><div className="source-stamp"><span data-testid="source-time">{telemetry.current?.source_time ?? '데이터 대기'}</span><b>SEQ <span data-testid="sequence">{telemetry.current?.sequence ?? '—'}</span></b></div></div>{telemetry.stale && <div className="stale-banner">최신 데이터 수신을 기다리고 있습니다. 마지막 관측값을 표시합니다.</div>}</>;
+}
+
+function ErrorBanner({ error }: { error: string | null }) {
+  const telemetry = useTelemetry();
+  const message = error || telemetry.error;
+  return message ? <div role="alert" className="error-banner">{message}</div> : null;
+}
+
 export default function App() {
   const [registry, setRegistry] = useState<Registry | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -37,9 +59,6 @@ export default function App() {
   const header = useRef<HTMLDivElement>(null);
   const { user, logout } = useSession();
   const [menuOpen, setMenuOpen] = useState(false);
-  const paused = usePaused();
-  const telemetry = useTelemetry();
-  const connection = useConnection();
   useEffect(() => connectTelemetry(), []);
   useEffect(() => {
     const controller = new AbortController();
@@ -54,13 +73,13 @@ export default function App() {
     return () => window.removeEventListener('beforeunload', beforeUnload);
   }, [chatState]);
 
-  const canLeave = useCallback((cancel: boolean) => {
+  const canLeave = (cancel: boolean) => {
     if (!chatState.pending && !chatState.draft) return true;
     const message = chatState.pending
       ? cancel ? 'AI 답변을 기다리는 중입니다. 닫으면 기다림을 취소합니다. 대화 기록과 작성한 글은 남습니다. 닫을까요?' : 'AI 답변을 기다리는 중입니다. 다른 화면으로 이동할까요? 조회와 대화 기록은 유지됩니다.'
       : '작성 중인 질문이 있습니다. 글은 보관됩니다. AI 화면에서 나갈까요?';
     return window.confirm(message);
-  }, [chatState]);
+  };
   const restoreFocus = () => requestAnimationFrame(() => {
     const target = [returnFocus.current, document.getElementById('open-agent'), document.getElementById('menu-toggle')]
       .find(node => node?.isConnected && node.getClientRects().length && !node.closest('[hidden]'));
@@ -79,17 +98,17 @@ export default function App() {
     setTab(next);
     return true;
   };
-  const openPanel = useCallback((next: WorkspaceTab) => {
+  const openPanel = (next: WorkspaceTab) => {
     if (tab === 'agent' && next !== 'agent' && !canLeave(false)) return;
     if (!tab) returnFocus.current = document.activeElement as HTMLElement;
     setWorkspaceOpened(true); setTab(next); setMenuOpen(false);
-  }, [tab, canLeave]);
-  const onSelect = useCallback((tag: string) => setSelected(tag), []);
-  const inspectSensor = useCallback((tag: string) => { onSelect(tag); openPanel('sensor'); }, [onSelect, openPanel]);
-  const onEquipment = useCallback((id: string) => {
+  };
+  const onSelect = setSelected;
+  const inspectSensor = (tag: string) => { onSelect(tag); openPanel('sensor'); };
+  const onEquipment = (id: string) => {
     const item = registry?.equipment.find(item => item.id === id);
     if (item) onSelect(item.primary_tag);
-  }, [registry, onSelect]);
+  };
   const prepareAgent = () => {
     const tag = registry?.equipment.find(item => item.id === 'reheater')?.primary_tag;
     if (!tag || chatState.pending) return;
@@ -117,7 +136,6 @@ export default function App() {
     return () => { observer.disconnect(); document.documentElement.style.removeProperty('--header-height'); };
   }, []);
   const kpis = ['실제 출력값', '목표 발전량', '총 주증기 유량', '터빈용 주증기 압력', '최종과열기 출구 온도 평균값', '배기가스 산소 중간값'].flatMap(tag => registry?.sensors[tag] ? [registry.sensors[tag]] : []);
-  const status = connection !== 'CONNECTED' ? connection : telemetry.status;
   return <div className={`app-shell ${tab ? 'drawer-open' : ''}`}>
     <a className="skip-link" href="#main">본문으로 건너뛰기</a>
     <div className="workspace-header" ref={header}>
@@ -125,8 +143,7 @@ export default function App() {
         <a href="/" className="brand" aria-label="BoilerOps Agent 홈"><span className="brand-mark" aria-hidden="true">B</span>BoilerOps <span>AGENT</span></a>
         <div className="workspace-label">OPERATIONS WORKSPACE <b>한국중부발전 · 공개 운전데이터</b></div>
         <div className="header-runtime">
-          <div className="connections"><span>Kafka <b data-testid="kafka-status">{telemetry.kafka}</b></span><span>WebSocket <b data-testid="ws-status">{connection}</b></span><span>Replay <b>{telemetry.replay_interval_ms || '—'} ms</b></span></div>
-          <span className={`status ${status.toLowerCase()}`} data-testid="stream-status" role="status">● {status}</span>
+          <RuntimeStatus />
           <button className="session-logout" onClick={logoutSession}>{user.user_id} · 로그아웃</button>
         </div>
         <button id="menu-toggle" className="menu-toggle" aria-expanded={menuOpen} aria-controls="page-nav" onClick={() => setMenuOpen(!menuOpen)}>메뉴</button>
@@ -135,14 +152,13 @@ export default function App() {
         <nav id="page-nav" className={`page-nav ${menuOpen ? 'open' : ''}`} aria-label="페이지 메뉴" onKeyDown={event => { if (event.key === 'Escape') { setMenuOpen(false); document.getElementById('menu-toggle')?.focus(); } }}>
           {views.map(item => <a key={item.id} href={`#${item.id}`} aria-current={view === item.id ? 'page' : undefined} onClick={event => { event.preventDefault(); changeView(item.id); }}>{item.label}</a>)}
         </nav>
-        <div className="update-controls"><button onClick={toggleUpdates} aria-pressed={paused}>화면 자동 갱신 {paused ? '재개' : '일시정지'}</button><span role="status">{paused ? '화면만 멈춤' : '갱신 중'}</span></div>
+        <UpdateControls />
       </div>
     </div>
     <main id="main" tabIndex={-1}>
-      {(error || telemetry.error) && <div role="alert" className="error-banner">{error || telemetry.error}</div>}
+      <ErrorBanner error={error} />
       <section id="monitoring" tabIndex={-1} hidden={view !== 'monitoring'} aria-label="실시간 모니터링">
-        <div className="page-heading"><div><span className="eyebrow">PLANT EXPLORER</span><h1>공장 모니터링 <span>과거 데이터 재생</span></h1></div><div className="source-stamp"><span data-testid="source-time">{telemetry.current?.source_time ?? '데이터 대기'}</span><b>SEQ <span data-testid="sequence">{telemetry.current?.sequence ?? '—'}</span></b></div></div>
-        {telemetry.stale && <div className="stale-banner">최신 데이터 수신을 기다리고 있습니다. 마지막 관측값을 표시합니다.</div>}
+        <ObservationHeading />
         <div className="kpi-bar">{kpis.map(sensor => <KPI key={sensor.tag} sensor={sensor} selected={selected === sensor.tag} onSelect={() => { onSelect(sensor.tag); if (!tab) openPanel('sensor'); }} />)}</div>
         <div className="monitor-grid">{registry ? <Suspense fallback={loadingView}><BoilerViewport registry={registry} selected={selected} onSelect={onSelect} onEquipment={onEquipment} onInspect={inspectSensor} active={view === 'monitoring'} /></Suspense> : <div className="panel loading" role="status">{error ? '설비 목록을 불러오지 못했습니다. 연결을 확인하고 다시 열어주세요.' : '설비 목록 불러오는 중…'}</div>}</div>
         <ForecastPanel active={view === 'monitoring'} />
