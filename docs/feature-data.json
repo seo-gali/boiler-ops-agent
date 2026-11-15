@@ -81,6 +81,7 @@
     ],
     "sources": [
       "backend/app/security.py",
+      "backend/app/model_client.py",
       "backend/app/agent/traces.py",
       "frontend/src/chat.css"
     ],

@@ -67,21 +67,7 @@
 <p>흐름 선도 같은 원칙을 따른다. 코드의 <code>PROCESS_FLOWS</code>에 있는 연소·배기가스 흐름과 급수·증기 흐름만 표시하고, 확인되지 않은 세부 배관을 추가하지 않는다.</p>
 <h2>6. 개발할 때 확인할 문서</h2>
 <p>단계 이름의 Phase는 구현 순서를 뜻한다. 이미 끝난 단계를 다시 시작하는 지시가 아니다. 수정할 기능에 해당하는 문서만 읽고, 여러 기능을 바꾸면 관련 기준을 함께 확인한다.</p>
-<table><thead><tr><th scope="col">작업</th><th scope="col">구현·검증 기준</th></tr></thead><tbody>
-<tr><td>데이터 재생·수신</td><td>Phase 1</td></tr>
-<tr><td>센서·단위·설비 연결</td><td>Phase 2</td></tr>
-<tr><td>실제값·목표값 비교와 변화 계산</td><td>Phase 3</td></tr>
-<tr><td>AI 읽기 도구</td><td>Phase 4</td></tr>
-<tr><td>온도 예측</td><td>Phase 5</td></tr>
-<tr><td>연습용 변경안·승인</td><td>Phase 6</td></tr>
-<tr><td>서비스 전체 연결·실패 상황</td><td>Phase 7 통합 검증</td></tr>
-<tr><td>로그인·권한·사용자별 기록·요청 한도</td><td><a href="docs-instructions-phase7-security-hardening.html">보안 기준</a></td></tr>
-<tr><td>AI 답변·질문별 근거</td><td><a href="docs-instructions-phase7-agent-answers.html">답변 기준</a></td></tr>
-<tr><td>한 명령 실행·키 재발급</td><td><a href="docs-instructions-phase7-local-start.html">로컬 실행</a></td></tr>
-<tr><td>공장·센서 선택·채팅·기간 조회</td><td><a href="docs-instructions-phase7-workspace.html">작업 화면</a></td></tr>
-<tr><td>화면·조회·파일 크기 성능</td><td><a href="docs-instructions-phase7-workspace.html">성능 확인</a>, <a href="docs-results-phase7-performance.html">측정 기록</a></td></tr>
-<tr><td>Pages 문서·검색 설정</td><td><a href="docs-local-development.html">문서 생성·검증</a></td></tr>
-</tbody></table>
+<p>기능별 구현·검증 지침, 이전 버전의 결과와 문서 생성 경로는 <a href="docs-readme.html">문서 맵</a>에서 찾는다. Phase별 문서 목록은 그곳에서 관리한다.</p>
 <p>공통 구현·승인·검증 기준은 <a href="coding-standards.html">CODING_STANDARDS.md</a>에 둔다. 이 문서에 같은 규칙을 반복하지 않는다. 기술이나 모델을 교체하기 전에는 기존 방식에서 확인한 문제와 측정 결과를 먼저 살핀다.</p>
 <h2>7. 재생 데이터의 필드</h2>
 <p>재생 프로그램은 다음 형태로 한 행을 보낸다. <code>measurements</code>에는 숫자로 바꾸기 전의 원본 문자열이 들어간다.</p>

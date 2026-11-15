@@ -1,13 +1,17 @@
 """실제 HTTP 라우트의 입력 경계·동시 응답과 격리 SQLite 조회 검증.
 
-서버 lifespan, 인증 저장소, 모델, Kafka 및 디스크 DB를 시작하지 않는다.
+서버 lifespan, 실제 자격, 모델, Kafka 및 기존 DB를 사용하지 않는다.
 """
 import asyncio
 import csv
+import hashlib
+import io
 import json
-import sqlite3
+import os
 import sys
 import threading
+import time
+from collections import Counter
 from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -18,8 +22,6 @@ from urllib.parse import urlencode
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from fastapi import FastAPI
-from fastapi.exceptions import RequestValidationError
 from backend.app import main
 from backend.app.agent.service import AgentFailure
 from backend.app.simulator.service import Simulator
@@ -28,11 +30,12 @@ from backend.app.domain import history
 from backend.app.replay.csv_source import rows
 from backend.app.streaming import consumer
 from backend.app.websocket.hub import Hub
+from backend.app.security import Security as AppSecurity, Session
+from backend.app import model_client
+from backend.app.forecast.service import forecast
 
 principal = SimpleNamespace(user_id="fixture", role="operator")
-app = FastAPI()
-app.router.routes.extend(main.app.router.routes)
-app.add_exception_handler(RequestValidationError, main.validation_error)
+app = main.create_app()
 results = []
 
 
@@ -40,13 +43,14 @@ def check(name, passed, **observed):
     results.append({"name": name, "passed": bool(passed), **observed})
 
 
-async def request(path, body=None, query=None):
+async def request(path, body=None, query=None, application=app, method=None):
     sent = []
     payload = json.dumps(body).encode() if body is not None else b""
     scope = {"type": "http", "asgi": {"version": "3.0"}, "http_version": "1.1",
-             "method": "POST" if body is not None else "GET", "scheme": "http",
+             "method": method or ("POST" if body is not None else "GET"), "scheme": "http",
              "path": path, "raw_path": path.encode(), "query_string": urlencode(query or {}).encode(),
-             "headers": [(b"content-type", b"application/json")],
+             "headers": [(b"content-type", b"application/json"), (b"host", b"127.0.0.1"),
+                         (b"origin", b"http://127.0.0.1"), (b"cookie", b"boiler_session=fixture")],
              "client": ("127.0.0.1", 1), "server": ("test", 80), "root_path": "",
              "state": {"principal": principal}}
 
@@ -56,15 +60,18 @@ async def request(path, body=None, query=None):
     async def send(message):
         sent.append(message)
 
-    await app(scope, receive, send)
+    await application(scope, receive, send)
     status = next(item["status"] for item in sent if item["type"] == "http.response.start")
     content = b"".join(item.get("body", b"") for item in sent if item["type"] == "http.response.body")
     return status, json.loads(content)
 
 
-class Security:
-    calls = 0
-    failure = None
+class Security(AppSecurity):
+    def __init__(self):
+        self.calls, self.failure = 0, None
+        self.hostname, self.origin = "127.0.0.1", "http://127.0.0.1"
+        self.buckets, self.connections = {}, Counter()
+        self.sessions = {hashlib.sha256(b"fixture").hexdigest(): Session(principal, time.time() + 300)}
 
     async def model_work(self, user, work):
         self.calls += 1
@@ -72,14 +79,64 @@ class Security:
             raise self.failure
         return {"accepted": True}
 
-    def operator(self, user):
-        assert user.role == "operator"
+
+async def app_isolation():
+    other = main.create_app()
+    for application, name in [(app, "first"), (other, "second")]:
+        application.state.security = Security()
+        application.state.hub = Hub()
+        application.state.boiler = SimpleNamespace(settings=None, snapshot=lambda name=name: {"source": name})
+    responses = await asyncio.gather(request('/api/state'), request('/api/state', application=other))
+    check('applications return their own observations', [item[1] for item in responses] == [{'source': 'first'}, {'source': 'second'}])
+
+    async def observe(application):
+        sent, ready = [], asyncio.Event()
+        connected = False
+
+        async def receive():
+            nonlocal connected
+            if not connected:
+                connected = True
+                return {'type': 'websocket.connect'}
+            await ready.wait()
+            return {'type': 'websocket.disconnect', 'code': 1000}
+
+        async def send(message):
+            sent.append(message)
+            if message['type'] == 'websocket.send':
+                ready.set()
+
+        scope = {'type': 'websocket', 'asgi': {'version': '3.0'}, 'scheme': 'ws', 'path': '/api/ws',
+                 'raw_path': b'/api/ws', 'query_string': b'', 'root_path': '',
+                 'headers': [(b'host', b'127.0.0.1'), (b'origin', b'http://127.0.0.1'), (b'cookie', b'boiler_session=fixture')],
+                 'client': ('127.0.0.1', 1), 'server': ('127.0.0.1', 80)}
+        await asyncio.wait_for(application(scope, receive, send), 2)
+        return json.loads(next(item['text'] for item in sent if item['type'] == 'websocket.send'))
+
+    observed = await asyncio.gather(observe(app), observe(other))
+    check('WebSocket applications send their own observations', observed == [{'source': 'first'}, {'source': 'second'}])
+    check('WebSocket disconnect releases each application subscription',
+          not app.state.hub.queues and not other.state.hub.queues
+          and not app.state.security.connections and not other.state.security.connections)
+    with main.reserve_history(other.state.history_slots), main.reserve_history(other.state.history_slots), \
+            patch.object(main, 'history_metadata', return_value={'first_time': None}):
+        first, second = await asyncio.gather(request('/api/history/metadata'), request('/api/history/metadata', application=other))
+        check('CSV saturation stays within its application', first[0] == 200 and second[0] == 429)
+    logout_status, _ = await request('/api/session', application=other, method='DELETE')
+    first, second = await asyncio.gather(request('/api/state'), request('/api/state', application=other))
+    check('session revocation stays within its application', logout_status == 200 and first[0] == 200 and second[0] == 401)
+    other.state.security = Security()
+    first, second = await asyncio.gather(request('/api/metrics/http'), request('/api/metrics/http', application=other))
+    first_state = next(item for item in first[1]['routes'] if item['route'] == '/api/state')
+    second_state = next(item for item in second[1]['routes'] if item['route'] == '/api/state')
+    check('HTTP metrics stay within their application', first_state['status_counts'] == {'200': 2}
+          and second_state['status_counts'] == {'200': 1, '401': 1})
 
 
 async def boundaries():
     security = Security()
-    main.app.state.security = security
-    main.app.state.boiler = SimpleNamespace(
+    app.state.security = security
+    app.state.boiler = SimpleNamespace(
         registry={"tag ": {"equipment": "reheater", "unit": "°C"}},
         current=None, history=[], snapshot=lambda: {})
     for path, field, extra in [
@@ -127,7 +184,7 @@ async def responsiveness():
             release.wait(1)
             return {"done": True}
 
-        main.app.state.simulator = SimpleNamespace(**{method: blocked})
+        app.state.simulator = SimpleNamespace(**{method: blocked})
         pending = asyncio.create_task(request(path, body))
         try:
             await asyncio.to_thread(started.wait, 2)
@@ -149,15 +206,15 @@ async def file_responsiveness():
         started, release = threading.Event(), threading.Event()
         boiler = SimpleNamespace(current={'sequence': 1}, history=[],
                                  registry={'tag': {'equipment': 'reheater'}}, snapshot=lambda: {'status': 'LIVE'})
-        main.app.state.boiler = boiler
+        app.state.boiler = boiler
 
         def blocked(*args):
             started.set()
             release.wait(1)
             return {'sequence': args[0].current['sequence']} if target == 'forecast' else {'done': True}
 
-        main.app.state.traces = SimpleNamespace(read=blocked)
-        owner, name = (main.ReadTools, 'call') if target == 'tool' else (main, 'forecast') if target == 'forecast' else (main.app.state.traces, 'read')
+        app.state.traces = SimpleNamespace(read=blocked)
+        owner, name = (main.ReadTools, 'call') if target == 'tool' else (main, 'forecast') if target == 'forecast' else (app.state.traces, 'read')
         with patch.object(owner, name, blocked):
             pending = asyncio.create_task(request(path, query=query))
             try:
@@ -253,43 +310,106 @@ async def streaming_waits():
 
 
 def sql_queries():
-    # 새 메모리 DB만 사용한다. 기존 데이터베이스를 열거나 삭제하지 않는다.
-    db = sqlite3.connect(":memory:")
-    db.row_factory = sqlite3.Row
-    db.executescript("""
-        CREATE TABLE state (id INTEGER PRIMARY KEY, value INTEGER, revision INTEGER);
-        INSERT INTO state VALUES (1,0,0);
-        CREATE TABLE proposals (id TEXT PRIMARY KEY, payload TEXT, status TEXT, owner TEXT);
-        CREATE INDEX proposals_owner ON proposals(owner);
-        CREATE TABLE audit (id INTEGER PRIMARY KEY, owner TEXT, payload TEXT);
-        CREATE INDEX audit_owner ON audit(owner,id);
-    """)
-    simulator = object.__new__(Simulator)
+    with TemporaryDirectory(prefix="boiler-sql-contract-") as directory:
+        with patch.dict(os.environ, {"SIMULATOR_DB_PATH": str(Path(directory) / "simulator.sqlite")}):
+            simulator = Simulator(None, None)
+        with simulator.connection() as db:
+            @contextmanager
+            def connection():
+                yield db
 
-    @contextmanager
-    def connection():
-        yield db
+            statements, counts = [], []
+            db.set_trace_callback(statements.append)
+            with patch.object(simulator, 'connection', connection):
+                for total in (1, 20):
+                    for index in range(1 if total == 1 else 2, total + 1):
+                        db.execute("INSERT INTO proposals(id,payload,status,owner) VALUES (?,?,?,?)", (str(index), "{}", "pending", "fixture"))
+                        db.execute("INSERT INTO audit(id,created_at,event,payload,owner) VALUES (?,?,?,?,?)", (index, 0, "proposed", "{}", "fixture"))
+                    statements.clear()
+                    snapshot = simulator.snapshot(principal)
+                    snapshot_queries = sum(item.lstrip().upper().startswith("SELECT") for item in statements)
+                    statements.clear()
+                    audit = simulator.audit_log(principal)
+                    audit_queries = sum(item.lstrip().upper().startswith("SELECT") for item in statements)
+                    counts.append({"rows": total, "snapshot_queries": snapshot_queries, "audit_queries": audit_queries})
+                    check(f"SQL batch with {total} records", len(snapshot["proposals"]) == total and len(audit) == total, **counts[-1])
+                check("SQL query count stays bounded as rows grow",
+                      counts[-1]['snapshot_queries'] <= counts[0]['snapshot_queries'] + 1
+                      and counts[-1]['audit_queries'] <= counts[0]['audit_queries'] + 1, counts=counts)
+                db.execute("INSERT INTO proposals(id,payload,status,owner) VALUES (?,?,?,?)", ("other", "{}", "pending", "other"))
+                db.execute("INSERT INTO audit(created_at,event,payload,owner) VALUES (?,?,?,?)", (0, "proposed", "{}", "other"))
+                check("SQL lists exclude other owners", len(simulator.snapshot(principal)['proposals']) == 20
+                      and len(simulator.audit_log(principal)) == 20)
+                page = simulator.audit_log(principal, after_id=5, limit=3)
+                check("audit cursor preserves order and page limit", [row['id'] for row in page] == [6, 7, 8])
 
-    simulator.connection = connection
-    statements = []
-    db.set_trace_callback(statements.append)
-    counts = []
-    for total in (1, 20):
-        for index in range(1 if total == 1 else 2, total + 1):
-            db.execute("INSERT INTO proposals VALUES (?,?,?,?)", (str(index), "{}", "pending", "fixture"))
-            db.execute("INSERT INTO audit VALUES (?,?,?)", (index, "fixture", "{}"))
-        statements.clear()
-        snapshot = simulator.snapshot(principal)
-        snapshot_queries = sum(item.startswith("SELECT") for item in statements)
-        statements.clear()
-        audit = simulator.audit_log(principal)
-        audit_queries = sum(item.startswith("SELECT") for item in statements)
-        counts.append({"rows": total, "snapshot_queries": snapshot_queries, "audit_queries": audit_queries})
-        check(f"SQL batch with {total} records", len(snapshot["proposals"]) == total and len(audit) == total
-              and snapshot_queries == 2 and audit_queries == 1, **counts[-1])
-    plans = [row[3] for row in db.execute("EXPLAIN QUERY PLAN SELECT * FROM audit WHERE owner=? AND id>? ORDER BY id LIMIT ?", ("fixture", 0, 50))]
-    check("audit cursor uses owner index", any("audit_owner" in item for item in plans), plan=plans)
-    db.close()
+
+def model_transport():
+    environment = {'OLLAMA_BASE_URL': 'http://127.0.0.1:11434', 'OLLAMA_MODEL': 'fixture'}
+    supplied = []
+
+    def open_model(request, timeout):
+        supplied.append((request.full_url, json.loads(request.data), timeout))
+        return io.BytesIO(b'{"message":{"content":"{\\"value\\":7}"}}')
+
+    with patch.object(model_client, 'os', SimpleNamespace(getenv=environment.get)), \
+            patch.object(model_client, 'build_opener', return_value=SimpleNamespace(open=open_model)):
+        result = model_client.model_json([{'role': 'user', 'content': 'fixture'}], {'type': 'object'})
+        check('shared model transport retains JSON contract and timeout', result == {'value': 7}
+              and supplied[0][0] == 'http://127.0.0.1:11434/api/chat' and supplied[0][2] == 180
+              and supplied[0][1]['format'] == {'type': 'object'} and supplied[0][1]['stream'] is False)
+        environment['OLLAMA_BASE_URL'] = 'http://external.invalid'
+        try:
+            model_client.model_json([], {})
+            rejected = False
+        except ValueError:
+            rejected = True
+        check('shared model transport blocks external endpoints before I/O', rejected and len(supplied) == 1)
+        environment['OLLAMA_BASE_URL'] = 'http://127.0.0.1:11434'
+        with patch.object(model_client, 'build_opener', return_value=SimpleNamespace(open=lambda *args, **kwargs: io.BytesIO(b' ' * (256 * 1024 + 1)))):
+            try:
+                model_client.model_json([], {})
+                rejected = False
+            except ValueError:
+                rejected = True
+            check('shared model transport retains response size limit', rejected)
+    try:
+        model_client.NoModelRedirect().redirect_request(None, None, 302, '', {}, 'http://external.invalid')
+        rejected = False
+    except ValueError:
+        rejected = True
+    check('shared model transport blocks redirects', rejected)
+
+
+async def forecast_models():
+    with TemporaryDirectory(prefix='boiler-model-contract-') as directory:
+        path = Path(directory) / 'forecast.json'
+        model = {'target': 'sensor ', 'horizon_minutes': 5, 'intercept': 3, 'slope': 2,
+                 'train_end_time': '2024-12-01', 'validation_end_time': '2025-01-01',
+                 'dataset_sha256': 'fixture', 'limitations': [], 'validation': {},
+                 'test': {'naive': {'mae': 2}, 'linear_ar': {'mae': 1}}}
+        state = SimpleNamespace(current={'source_time': '2025-01-02T00:00:00', 'sensors': {'sensor ': {'value': 23}}},
+                                registry={'sensor ': {'unit': 'fixture-unit', 'equipment': 'reheater'}},
+                                history=[], snapshot=lambda: {'status': 'LIVE'})
+        app.state.boiler = state
+        with patch.dict(os.environ, {'FORECAST_MODEL_PATH': str(path)}):
+            for name, expected in [('naive', 23), ('linear_ar', 49)]:
+                path.write_text(json.dumps({**model, 'selected': name}), encoding='utf-8')
+                result = forecast(state)
+                check(f'{name}: model calculation and source contract', result['prediction'] == expected
+                      and result['selected_model'] == name and result['input_value'] == 23
+                      and result['forecast_time'] == '2025-01-02T00:05:00' and result['dataset_sha256'] == 'fixture')
+                api_status, api_result = await request('/api/forecast')
+                tool_status, tool_result = await request('/api/tools/get_temperature_forecast', query={'equipment': 'reheater'})
+                check(f'{name}: HTTP forecast and read tool match the model', api_status == tool_status == 200
+                      and api_result == tool_result == result)
+            state.current['source_time'] = model['validation_end_time']
+            try:
+                forecast(state)
+                rejected = False
+            except ValueError:
+                rejected = True
+            check('model input at validation cutoff is rejected', rejected)
 
 
 def history_queries():
@@ -376,7 +496,7 @@ async def history_boundaries():
             writer = csv.writer(stream)
             writer.writerow(['time', 'sensor '])
             writer.writerow(['2025-01-01T00:00:00+00:00', '1'])
-        main.app.state.boiler = SimpleNamespace(settings=settings, registry={'sensor ': {'unit': '°C'}})
+        app.state.boiler = SimpleNamespace(settings=settings, registry={'sensor ': {'unit': '°C'}})
         status, _ = await request('/api/history/range', query={'tag': 'sensor ', 'start': start.isoformat(), 'end': end.isoformat()})
         check('source timezone mismatch retains HTTP 422', status == 422, status=status)
         with dataset.open('a', encoding='utf-8', newline='') as stream:
@@ -390,11 +510,14 @@ async def history_boundaries():
 
 
 async def run():
+    await app_isolation()
     await boundaries()
     await responsiveness()
     await file_responsiveness()
     await streaming_waits()
     sql_queries()
+    model_transport()
+    await forecast_models()
     history_queries()
     await history_boundaries()
 
@@ -402,7 +525,7 @@ async def run():
 if __name__ == "__main__":
     asyncio.run(run())
     report = {"passed": all(item["passed"] for item in results), "checks": results,
-              "scope": "Actual HTTP routes after authentication; isolated services and in-memory SQLite. No production query timings."}
+              "scope": "Actual app factory, HTTP/WebSocket and fixture authentication; isolated services, temporary SQLite and CSV. No production query timings."}
     output = Path(sys.argv[1]) if len(sys.argv) > 1 else Path("artifacts/api-performance.json")
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

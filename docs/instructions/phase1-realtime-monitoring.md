@@ -6,6 +6,7 @@
 
 ## 구현과 검증
 
+- API 앱은 생성 함수로 만들며 라우트는 요청을 받은 앱의 자원을 사용한다. 서로 다른 앱의 관측·인증·조회 한도·WebSocket 수신자를 공유하지 않는다. 기존 `backend.app.main:app` 실행 경로는 유지한다.
 - Python: FastAPI, Uvicorn, aiokafka, python-dotenv. `uv.lock`으로 고정한다.
 - Frontend: React, TypeScript, Vite, Three.js, React Three Fiber. `frontend/package-lock.json`으로 고정한다.
 - 전체 연결 검사(E2E)는 Playwright Chromium, 별도 Kafka Docker 컨테이너와 실제 CSV를 사용한다. 개별 수정의 검사 범위와 패키지 변경 승인은 [코딩 기준](../../CODING_STANDARDS.md)을 따른다.

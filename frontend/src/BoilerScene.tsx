@@ -207,7 +207,6 @@ function SceneCanvas({ registry, selected, selectedEquipment, hovered, zoom, pan
     {markers.map(sensor => <mesh key={sensor.tag} position={sensor.scene_position!} onClick={event => { event.stopPropagation(); onSensor(sensor.tag); }}><sphereGeometry args={[.14, 12, 12]} /><meshBasicMaterial color={selected === sensor.tag ? scenePalette.accent : equipmentColors[sensor.equipment]?.body ?? scenePalette.text} /></mesh>)}
   </Canvas></SceneBoundary>;
 }
-SceneCanvas.displayName = 'SceneCanvas';
 
 export function BoilerViewport({ registry, selected, onSelect, onEquipment, onInspect, active = true }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void; onEquipment: (id: string) => void; onInspect?: (tag: string) => void; active?: boolean }) {
   const box = useRef<HTMLDivElement>(null);

@@ -77,7 +77,9 @@ npm run start:reset-key
 | 궁금한 내용 | 문서 |
 | --- | --- |
 | 화면 조작·개발 실행·문제 해결 | [자세한 사용법](docs/local-development.md) |
+| 현행 기준·과거 결과·문서 원본 찾기 | [문서 맵](docs/README.md) |
 | 기능 흐름과 코드 구조 | [그림으로 보는 프로젝트 지도](https://seo-gali.github.io/boiler-ops-agent/) |
 | 설계와 데이터 기준 | [프로젝트 계획](.project/plan.md) · [화면 설계](DESIGN.md) |
-| 실제 검증 결과와 남은 한계 | [화면·데이터 검증](docs/results/phase7-select-chat-compare.md) · [안정성 보완](docs/results/phase7-operational-reliability.md) · [시스템 설계](docs/system-design-review.md) |
+| 실제 검증 결과와 남은 한계 | [화면·데이터 검증](docs/results/phase7-select-chat-compare.md) · [안정성 보완](docs/results/phase7-operational-reliability.md) · [데이터 처리 보완](docs/results/phase7-data-oriented.md) |
+| 구조·의존성·테스트 점검과 확장 제안 | [시스템 설계 검토](docs/system-design-review.md) |
 | 개발 작업 규칙 | [코딩 기준](CODING_STANDARDS.md) · [작업 진입점](AGENTS.md) |

@@ -5,7 +5,7 @@ from contextlib import asynccontextmanager, contextmanager, suppress
 from threading import BoundedSemaphore
 from types import SimpleNamespace
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request, Response
+from fastapi import APIRouter, FastAPI, WebSocket, WebSocketDisconnect, HTTPException, Query, Request, Response
 
 from fastapi.exceptions import RequestValidationError
 from starlette.concurrency import run_in_threadpool
@@ -45,31 +45,26 @@ async def lifespan(app):
         await task
 
 
-app = FastAPI(title="BoilerOps Agent", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
-app.state.http_metrics = {}
-app.add_middleware(SecurityMiddleware, owner=app)
-app.add_middleware(HttpObservability, owner=app)
-history_slots = BoundedSemaphore(2)
+router = APIRouter()
 
 
 @contextmanager
-def reserve_history():
-    if not history_slots.acquire(blocking=False):
+def reserve_history(slots):
+    if not slots.acquire(blocking=False):
         raise HTTPException(429, "원본 조회가 많습니다. 잠시 후 다시 조회하세요.", headers={"Retry-After": "1"})
     try:
         yield
     finally:
-        history_slots.release()
+        slots.release()
 
 
-@app.exception_handler(RequestValidationError)
 async def validation_error(request, error):
     return JSONResponse({"detail": [{"loc": item["loc"], "type": item["type"]} for item in error.errors()]}, status_code=422)
 
 
-@app.post("/api/session")
+@router.post("/api/session")
 async def login(credentials: Login, request: Request, response: Response):
-    security = app.state.security
+    security = request.app.state.security
     token, principal = security.login(credentials)
     security.logout(request.scope)
     response.set_cookie(security.cookie_name, token, max_age=security.session_seconds,
@@ -77,48 +72,48 @@ async def login(credentials: Login, request: Request, response: Response):
     return principal
 
 
-@app.get("/api/session")
+@router.get("/api/session")
 async def session(request: Request):
     return request.state.principal
 
 
-@app.delete("/api/session")
+@router.delete("/api/session")
 async def logout(request: Request, response: Response):
-    app.state.security.logout(request.scope)
-    response.delete_cookie(app.state.security.cookie_name, path="/")
+    request.app.state.security.logout(request.scope)
+    response.delete_cookie(request.app.state.security.cookie_name, path="/")
     return {"status": "logged_out"}
 
 
-@app.get("/api/health")
+@router.get("/api/health")
 async def health():
     return {"status": "ok"}
 
 
-@app.get("/api/metrics/http")
+@router.get("/api/metrics/http")
 async def http_metrics(request: Request):
-    app.state.security.operator(request.state.principal)
+    request.app.state.security.operator(request.state.principal)
     return {"scope": "single-process; resets on restart", "routes": [
         {"method": method, "route": route, **entry, "status_counts": dict(entry["status_counts"]),
          "avg_duration_ms": entry["total_duration_ms"] / entry["count"]}
-        for (method, route), entry in sorted(app.state.http_metrics.items())]}
+        for (method, route), entry in sorted(request.app.state.http_metrics.items())]}
 
 
-@app.get("/api/registry")
-async def registry():
-    return {"sensors": app.state.boiler.registry, "equipment": EQUIPMENT,
+@router.get("/api/registry")
+async def registry(request: Request):
+    return {"sensors": request.app.state.boiler.registry, "equipment": EQUIPMENT,
             "hierarchy": {"id": "boiler", "children": [item["id"] for item in EQUIPMENT] + ["main-steam", "generation", "unmapped"]},
             "flows": PROCESS_FLOWS,
             "position_basis": "Logical scene coordinates; not physical instrument positions"}
 
 
-@app.get("/api/state")
-async def state():
-    return app.state.boiler.snapshot()
+@router.get("/api/state")
+async def state(request: Request):
+    return request.app.state.boiler.snapshot()
 
 
-@app.get("/api/sensors/history")
-async def history(tag: str, limit: int = Query(120, ge=1, le=3600)):
-    boiler = app.state.boiler
+@router.get("/api/sensors/history")
+async def history(request: Request, tag: str, limit: int = Query(120, ge=1, le=3600)):
+    boiler = request.app.state.boiler
     if tag not in boiler.registry:
         raise HTTPException(404, "Unknown sensor tag")
     return {"tag": tag, "unit": boiler.registry[tag]["unit"], "points": [
@@ -126,26 +121,26 @@ async def history(tag: str, limit: int = Query(120, ge=1, le=3600)):
         for event in list(boiler.history)[-limit:]]}
 
 
-@app.get("/api/analysis/loop")
-async def analysis_loop(name: str = "reheater", limit: int = Query(120, ge=1, le=3600)):
+@router.get("/api/analysis/loop")
+async def analysis_loop(request: Request, name: str = "reheater", limit: int = Query(120, ge=1, le=3600)):
     try:
-        return loop_analysis(app.state.boiler, name, limit)
+        return loop_analysis(request.app.state.boiler, name, limit)
     except ValueError as error:
         raise HTTPException(404, str(error)) from error
 
 
-@app.get("/api/history/metadata")
-def source_history_metadata():
+@router.get("/api/history/metadata")
+def source_history_metadata(request: Request):
     try:
-        with reserve_history():
-            return history_metadata(app.state.boiler.settings)
+        with reserve_history(request.app.state.history_slots):
+            return history_metadata(request.app.state.boiler.settings)
     except (OSError, ValueError, TypeError) as error:
         raise HTTPException(503, "원본 CSV의 기간 정보를 읽을 수 없습니다. 데이터 파일과 일자 형식을 확인하세요.") from error
 
 
-@app.get("/api/history/range")
-def source_history_range(tag: str, start: datetime, end: datetime, limit: int = Query(1000, ge=1, le=1000)):
-    boiler = app.state.boiler
+@router.get("/api/history/range")
+def source_history_range(request: Request, tag: str, start: datetime, end: datetime, limit: int = Query(1000, ge=1, le=1000)):
+    boiler = request.app.state.boiler
     if tag not in boiler.registry:
         raise HTTPException(404, "등록되지 않은 원본 센서입니다.")
     if (start.utcoffset() is None) != (end.utcoffset() is None):
@@ -153,7 +148,7 @@ def source_history_range(tag: str, start: datetime, end: datetime, limit: int = 
     if start > end:
         raise HTTPException(422, "종료 시각은 시작 시각보다 빠를 수 없습니다.")
     try:
-        with reserve_history():
+        with reserve_history(request.app.state.history_slots):
             return history_range(boiler.settings, tag, boiler.registry[tag]['unit'], start, end, limit)
     except HistoryTimezoneMismatch as error:
         raise HTTPException(422, str(error)) from error
@@ -161,18 +156,18 @@ def source_history_range(tag: str, start: datetime, end: datetime, limit: int = 
         raise HTTPException(503, "원본 CSV를 읽을 수 없습니다. 파일과 센서·일자 형식을 확인하세요.") from error
 
 
-@app.get("/api/analysis/sensor")
-async def analysis_sensor(tag: str):
+@router.get("/api/analysis/sensor")
+async def analysis_sensor(request: Request, tag: str):
     try:
-        return sensor_summary(app.state.boiler, tag)
+        return sensor_summary(request.app.state.boiler, tag)
     except ValueError as error:
         raise HTTPException(404, str(error)) from error
 
 
-@app.get("/api/forecast")
-async def temperature_forecast():
+@router.get("/api/forecast")
+async def temperature_forecast(request: Request):
     try:
-        boiler = app.state.boiler
+        boiler = request.app.state.boiler
         snapshot = boiler.snapshot()
         observation = SimpleNamespace(current=boiler.current, registry=boiler.registry, snapshot=lambda: snapshot)
         return await run_in_threadpool(forecast, observation)
@@ -180,23 +175,23 @@ async def temperature_forecast():
         raise HTTPException(409, str(error)) from error
 
 
-@app.get("/api/tools/{name}")
-async def read_tool(name: str, equipment: str, tag: str | None = None):
+@router.get("/api/tools/{name}")
+async def read_tool(request: Request, name: str, equipment: str, tag: str | None = None):
     try:
-        tools = ReadTools(app.state.boiler, equipment, tag)
+        tools = ReadTools(request.app.state.boiler, equipment, tag)
         return await run_in_threadpool(tools.call, name)
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
 
 
-@app.post("/api/agent/query")
+@router.post("/api/agent/query")
 async def agent_query(request: AgentQuery, http: Request):
     try:
-        tools = ReadTools(app.state.boiler, request.equipment, request.tag)
+        tools = ReadTools(http.app.state.boiler, request.equipment, request.tag)
         def work():
-            with app.state.traces.reserve():
-                return query_agent(request, tools, http.state.principal, app.state.traces)
-        return await app.state.security.model_work(http.state.principal, work)
+            with http.app.state.traces.reserve():
+                return query_agent(request, tools, http.state.principal, http.app.state.traces)
+        return await http.app.state.security.model_work(http.state.principal, work)
     except ValueError as error:
         raise HTTPException(422, str(error)) from error
     except AgentFailure as error:
@@ -204,25 +199,25 @@ async def agent_query(request: AgentQuery, http: Request):
                                   "error": "AI 답변을 완료하지 못했습니다. 잠시 후 다시 조회하세요."}) from error
 
 
-@app.get("/api/agent/traces/{trace_id}")
+@router.get("/api/agent/traces/{trace_id}")
 def agent_trace(trace_id: UUID, request: Request):
-    return app.state.traces.read(trace_id, request.state.principal)
+    return request.app.state.traces.read(trace_id, request.state.principal)
 
 
-@app.get("/api/simulator")
+@router.get("/api/simulator")
 async def simulator_state(request: Request):
-    return await run_in_threadpool(app.state.simulator.snapshot, request.state.principal)
+    return await run_in_threadpool(request.app.state.simulator.snapshot, request.state.principal)
 
 
-@app.get("/api/simulator/audit")
+@router.get("/api/simulator/audit")
 async def simulator_audit(request: Request, after_id: int = Query(0, ge=0), limit: int = Query(50, ge=1, le=100)):
-    return await run_in_threadpool(app.state.simulator.audit_log, request.state.principal, after_id, limit)
+    return await run_in_threadpool(request.app.state.simulator.audit_log, request.state.principal, after_id, limit)
 
 
-@app.post("/api/simulator/proposals")
+@router.post("/api/simulator/proposals")
 async def simulator_propose(request: ProposalRequest, http: Request):
     try:
-        return await app.state.security.model_work(http.state.principal, lambda: app.state.simulator.propose(request, http.state.principal))
+        return await http.app.state.security.model_work(http.state.principal, lambda: http.app.state.simulator.propose(request, http.state.principal))
     except SimulatorError as error:
         raise HTTPException(error.status, str(error)) from error
     except (ValueError, OSError, KeyError):
@@ -230,18 +225,18 @@ async def simulator_propose(request: ProposalRequest, http: Request):
                              "detail": "Simulator 제안을 만들지 못했습니다. 잠시 후 다시 시도하세요."}, status_code=503)
 
 
-@app.post("/api/simulator/proposals/{proposal_id}/decision")
+@router.post("/api/simulator/proposals/{proposal_id}/decision")
 async def simulator_decide(proposal_id: UUID, decision: Decision, request: Request):
     try:
-        app.state.security.operator(request.state.principal)
-        return await run_in_threadpool(app.state.simulator.decide, proposal_id, decision, request.state.principal)
+        request.app.state.security.operator(request.state.principal)
+        return await run_in_threadpool(request.app.state.simulator.decide, proposal_id, decision, request.state.principal)
     except SimulatorError as error:
         raise HTTPException(error.status, str(error)) from error
 
 
-@app.websocket("/api/ws")
+@router.websocket("/api/ws")
 async def websocket(ws: WebSocket):
-    security = app.state.security
+    security = ws.app.state.security
     try:
         principal = security.websocket_open(ws.scope)
     except HTTPException:
@@ -252,11 +247,11 @@ async def websocket(ws: WebSocket):
     except (WebSocketDisconnect, RuntimeError, OSError, asyncio.CancelledError):
         security.websocket_close(principal)
         raise
-    hub = app.state.hub
+    hub = ws.app.state.hub
     queue = hub.subscribe()
 
     async def send():
-        await ws.send_json(app.state.boiler.snapshot())
+        await ws.send_json(ws.app.state.boiler.snapshot())
         while True:
             try:
                 security.principal(ws.scope)
@@ -266,7 +261,7 @@ async def websocket(ws: WebSocket):
             try:
                 message = await asyncio.wait_for(queue.get(), timeout=.5)
             except TimeoutError:
-                message = app.state.boiler.snapshot()
+                message = ws.app.state.boiler.snapshot()
             if message.get('type') == 'overflow':
                 await ws.close(code=1013, reason='Telemetry subscriber fell behind; reconnect required')
                 return
@@ -298,3 +293,18 @@ async def websocket(ws: WebSocket):
         for task in tasks:
             with suppress(asyncio.CancelledError, WebSocketDisconnect, RuntimeError, OSError, HTTPException):
                 await task
+
+
+def create_app():
+    application = FastAPI(title="BoilerOps Agent", lifespan=lifespan, docs_url=None, redoc_url=None, openapi_url=None)
+    application.state.http_metrics = {}
+    application.state.history_slots = BoundedSemaphore(2)
+    application.add_middleware(SecurityMiddleware, owner=application)
+    application.add_middleware(HttpObservability, owner=application)
+    application.add_exception_handler(RequestValidationError, validation_error)
+    # HTTP 관측의 평면 경로 매칭 유지
+    application.router.routes.extend(router.routes)
+    return application
+
+
+app = create_app()

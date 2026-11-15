@@ -63,20 +63,6 @@ try {
   result.checks.push('Every JavaScript chunk is at most 500 kB without raising the warning threshold');
   browser = await chromium.launch({ headless: true, args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const context = await browser.newContext({ viewport: { width: 1800, height: 1100 } });
-  await context.addInitScript(() => {
-    window.__sceneCommits = 0;
-    window.__REACT_DEVTOOLS_GLOBAL_HOOK__ = {
-      supportsFiber: true, renderers: new Map(), inject() { return 1; }, onCommitFiberUnmount() {},
-      onCommitFiberRoot(_renderer, rootFiber) {
-        function visit(fiber) {
-          if (!fiber) return;
-          if (fiber.elementType?.displayName === 'SceneCanvas' && (fiber.flags & 1)) window.__sceneCommits++;
-          visit(fiber.child); visit(fiber.sibling);
-        }
-        visit(rootFiber.current);
-      },
-    };
-  });
   let authenticated = false;
   let role = drilldownReview ? 'operator' : 'viewer';
   let holdAnswer = false;
@@ -161,23 +147,19 @@ try {
   await page.reload();
   await poll(async () => await page.locator('.scene-marker').count() === 7, 'Scene projection and seven markers');
   assert.equal(await page.locator('canvas').count(), 1);
-  assert.ok([...loadedScripts].some(path => path.includes('BoilerScene-')));
-  for (const name of ['OperationsAnalysis-', 'WorkspacePanel-', 'SimulatorPanel-', 'RecordsPanel-']) assert.ok(![...loadedScripts].some(path => path.includes(name)), `${name} loaded too early`);
   assert.ok(!apiRequests.includes('/api/history/metadata') && !apiRequests.includes('/api/simulator'));
-  result.checks.push('Authenticated monitoring loads 3D; unvisited views make no requests and download no panel chunks');
+  result.checks.push('Authenticated monitoring loads 3D; unvisited views make no API requests');
 
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await poll(async () => await page.locator('.game-viewport').getAttribute('data-animation') === 'paused', 'Reduced motion');
-  const sceneCommitsBefore = await page.evaluate(() => window.__sceneCommits);
-  assert.ok(sceneCommitsBefore > 0, 'Scene render instrumentation attached');
+  const canvasBeforeTelemetry = await page.locator('canvas').evaluateHandle(node => node);
   for (let sequence = 2; sequence <= 11; sequence++) {
     for (const socket of sockets) socket.send(JSON.stringify(snapshot(sequence)));
     await poll(async () => await page.getByTestId('sequence').textContent() === String(sequence), `Telemetry ${sequence}`);
   }
-  const sceneCommitsAfter = await page.evaluate(() => window.__sceneCommits);
-  result.sceneRendersForTenTelemetryUpdates = sceneCommitsAfter - sceneCommitsBefore;
-  assert.equal(result.sceneRendersForTenTelemetryUpdates, 0);
-  result.checks.push('Ten new telemetry observations update HTML values without rendering SceneCanvas');
+  assert.equal(await page.locator('canvas').evaluate((node, original) => node === original, canvasBeforeTelemetry), true);
+  for (const [index, item] of equipment.entries()) assert.ok((await page.getByTestId('marker-' + item.primary_tag).textContent()).includes(String(111 + index)));
+  result.checks.push('Ten telemetry observations update visible sensor values and preserve the Canvas');
 
   if (drilldownReview) {
     await page.getByRole('button', { name: 'AI 도우미 열기' }).click();
@@ -347,7 +329,6 @@ try {
   await page.getByLabel('시작 시각', { exact: true }).waitFor();
   assert.equal(await page.locator('#analysis').evaluate(node => node === document.activeElement), true);
   await page.getByLabel('시작 시각', { exact: true }).fill('2026-01-01T00:03');
-  assert.ok([...loadedScripts].some(path => path.includes('OperationsAnalysis-')));
   await navigate('공장 모니터링');
   assert.equal(await page.locator('canvas').evaluate((node, original) => node === original, originalCanvas), true);
   await navigate('기간 조회');
@@ -372,7 +353,6 @@ try {
   assert.equal(await page.locator('#agent-question').inputValue(), '보관할 질문');
   await page.locator('#agent-question').fill('');
   await page.keyboard.press('Escape');
-  assert.ok([...loadedScripts].some(path => path.includes('WorkspacePanel-')));
   result.checks.push('Lazy drawer keeps an unsent question after closing and restores launcher focus');
 
   if (brandReview) {

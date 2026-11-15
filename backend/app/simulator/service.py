@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, StrictBool
 
-from backend.app.agent.service import model_json
+from backend.app.model_client import model_json
 from backend.app.security import Security
 
 POLICY = {"id": "local-demo-v1", "parameter": "demo_bias", "unit": "simulation_step", "minimum": -10,

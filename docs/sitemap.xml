@@ -13,6 +13,9 @@
     <loc>https://seo-gali.github.io/boiler-ops-agent/read/readme.html</loc>
   </url>
   <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-readme.html</loc>
+  </url>
+  <url>
     <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-local-development.html</loc>
   </url>
   <url>
@@ -23,6 +26,42 @@
   </url>
   <url>
     <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase7-local-start.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase1-realtime-monitoring.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase2-domain-mapping.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase3-operational-monitoring.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase4-read-agent.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase5-temperature-forecast.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase6-controlled-simulator.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-instructions-phase7-integrated-validation.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-results-phase1-realtime-monitoring.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-results-phase2-domain-mapping.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-results-phase3-operational-monitoring.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-results-phase4-read-agent.html</loc>
+  </url>
+  <url>
+    <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-results-phase6-controlled-simulator.html</loc>
   </url>
   <url>
     <loc>https://seo-gali.github.io/boiler-ops-agent/read/docs-results-phase7-local-start.html</loc>

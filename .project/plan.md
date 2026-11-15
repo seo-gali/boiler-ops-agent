@@ -97,21 +97,7 @@ AI는 원본 CSV나 Kafka에 직접 접근하지 않는다. 서버가 제공하�
 
 단계 이름의 Phase는 구현 순서를 뜻한다. 이미 끝난 단계를 다시 시작하는 지시가 아니다. 수정할 기능에 해당하는 문서만 읽고, 여러 기능을 바꾸면 관련 기준을 함께 확인한다.
 
-| 작업 | 구현·검증 기준 |
-| --- | --- |
-| 데이터 재생·수신 | [Phase 1](../docs/instructions/phase1-realtime-monitoring.md) |
-| 센서·단위·설비 연결 | [Phase 2](../docs/instructions/phase2-domain-mapping.md) |
-| 실제값·목표값 비교와 변화 계산 | [Phase 3](../docs/instructions/phase3-operational-monitoring.md) |
-| AI 읽기 도구 | [Phase 4](../docs/instructions/phase4-read-agent.md) |
-| 온도 예측 | [Phase 5](../docs/instructions/phase5-temperature-forecast.md) |
-| 연습용 변경안·승인 | [Phase 6](../docs/instructions/phase6-controlled-simulator.md) |
-| 서비스 전체 연결·실패 상황 | [Phase 7 통합 검증](../docs/instructions/phase7-integrated-validation.md) |
-| 로그인·권한·사용자별 기록·요청 한도 | [보안 기준](../docs/instructions/phase7-security-hardening.md) |
-| AI 답변·질문별 근거 | [답변 기준](../docs/instructions/phase7-agent-answers.md) |
-| 한 명령 실행·키 재발급 | [로컬 실행](../docs/instructions/phase7-local-start.md) |
-| 공장·센서 선택·채팅·기간 조회 | [작업 화면](../docs/instructions/phase7-workspace.md) |
-| 화면·조회·파일 크기 성능 | [성능 확인](../docs/instructions/phase7-workspace.md#성능-확인), [측정 기록](../docs/results/phase7-performance.md) |
-| Pages 문서·검색 설정 | [문서 생성·검증](../docs/local-development.md#github-pages-검색-노출) |
+기능별 구현·검증 지침, 이전 버전의 결과와 문서 생성 경로는 [문서 맵](../docs/README.md)에서 찾는다. Phase별 문서 목록은 그곳에서 관리한다.
 
 공통 구현·승인·검증 기준은 [CODING_STANDARDS.md](../CODING_STANDARDS.md)에 둔다. 이 문서에 같은 규칙을 반복하지 않는다. 기술이나 모델을 교체하기 전에는 기존 방식에서 확인한 문제와 측정 결과를 먼저 살핀다.
 

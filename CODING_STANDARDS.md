@@ -13,6 +13,7 @@
 
 | 문서 | 읽는 시점 |
 | --- | --- |
+| [docs/README.md](docs/README.md) | 기능별 문서 위치·현행 기준·과거 결과 구분 |
 | [.project/plan.md](.project/plan.md) | 기능 범위·작업 지침 선택 |
 | [DESIGN.md](DESIGN.md) | 화면·조작 변경 |
 | [docs/instructions/](docs/instructions/) | 해당 기능의 구현·완료 기준 확인 |

@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from backend.app import main
 from backend.app.security import Security, Principal, Session
 
+app = main.create_app()
 results, records = [], []
 
 
@@ -49,7 +50,7 @@ async def request(path, method="GET", body=None, query=None, token="fixture-oper
         sent.append(message)
 
     try:
-        await main.app(scope, receive, send)
+        await app(scope, receive, send)
     except RuntimeError:
         if not sent:
             raise
@@ -62,12 +63,12 @@ async def request(path, method="GET", body=None, query=None, token="fixture-oper
     return start["status"], dict(start.get("headers", [])), data
 
 
-@main.app.get("/api/probe/error")
+@app.get("/api/probe/error")
 async def failed_request():
     raise RuntimeError("private-sentinel body cookie database path")
 
 
-@main.app.get("/api/probe/{trace_id}")
+@app.get("/api/probe/{trace_id}")
 async def parameter_request(trace_id: str):
     await asyncio.sleep(.005)
     return {"ok": True}
@@ -86,7 +87,7 @@ async def csv_capacity():
         return {"first_time": None}
 
     query = {"tag": "raw-tag ", "start": "2025-03-01T00:00", "end": "2025-03-02T00:00"}
-    main.app.state.boiler = SimpleNamespace(settings=None, registry={"raw-tag ": {"unit": "°C"}})
+    app.state.boiler = SimpleNamespace(settings=None, registry={"raw-tag ": {"unit": "°C"}})
     with patch.object(main, "history_metadata", blocked), patch.object(main, "history_range", blocked):
         pending = [asyncio.create_task(request("/api/history/metadata")), asyncio.create_task(request("/api/history/range", query=query))]
         try:
@@ -141,7 +142,7 @@ async def observability():
           and data.get("request_id") == headers.get(b"x-request-id", b"").decode(), status=status)
     def broken_storage(principal):
         raise sqlite3.OperationalError("private-sentinel database path")
-    main.app.state.simulator = SimpleNamespace(snapshot=broken_storage)
+    app.state.simulator = SimpleNamespace(snapshot=broken_storage)
     status, _, data = await request("/api/simulator")
     check("SQLite storage failure has a safe stable error code", status == 500 and isinstance(data, dict) and data.get("code") == "internal_error")
     await request("/api/private-sentinel/one")
@@ -171,8 +172,8 @@ async def run():
     for role in ("operator", "viewer"):
         token = "fixture-" + role
         security.sessions[hashlib.sha256(token.encode()).hexdigest()] = Session(Principal(role, role), time.time() + 60)
-    main.app.state.security = security
-    main.app.state.boiler = SimpleNamespace(snapshot=lambda: {"ok": True})
+    app.state.security = security
+    app.state.boiler = SimpleNamespace(snapshot=lambda: {"ok": True})
     logger = logging.getLogger("uvicorn.error")
     handler = Capture()
     logger.addHandler(handler)
