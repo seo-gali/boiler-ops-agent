@@ -32,11 +32,10 @@ function responseError(status: number, data: { detail?: unknown } | null): Query
 }
 
 function querySuggestions(equipment: string | null, tag: string | null) {
-  const suggestions = ['선택한 센서의 현재값은?', '최근 값은 어떻게 변하고 있나요?'];
+  const suggestions = [{ label: '현재값 해석', question: '선택한 센서의 현재값은?' }, { label: '최근 변화', question: '최근 값은 어떻게 변하고 있나요?' }];
   const targetQuestion = tag ? targetQuestions[tag] : undefined;
-  if (targetQuestion?.equipment === equipment) suggestions.push(targetQuestion.question);
-  if (equipment === 'reheater') suggestions.push('재열기 온도의 5분 예측은 얼마나 믿을 수 있나요?');
-  suggestions.push('이 값은 언제 측정됐고 어떤 원본 근거가 있나요?', '현재값과 최근 변화 추이를 함께 설명해 주세요.', '최근 값은 얼마나 빠르게 변하고 있나요?', '이 값만 보고 밸브를 얼마나 열어야 하나요?', '현재 수치의 단위와 원본 근거는 무엇인가요?');
+  if (targetQuestion?.equipment === equipment) suggestions.push({ label: '목표값 비교', question: targetQuestion.question });
+  if (equipment === 'reheater') suggestions.push({ label: '5분 예측', question: '재열기 온도의 5분 예측은 얼마나 믿을 수 있나요?' });
   return suggestions;
 }
 
@@ -57,11 +56,10 @@ export function AgentPanel({ registry, equipment, tag, onSelect, onTrace, onPend
   const [turns, setTurns] = useState<ChatTurn[]>([]);
   const [pending, setPending] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
-  const [moreSuggestions, setMoreSuggestions] = useState(false);
   useEffect(() => { active.current = true; return () => { active.current = false; request.current?.abort(); }; }, []);
   useEffect(() => { onPending?.(pending); }, [pending, onPending]);
   useEffect(() => { onDraftChange?.(Boolean(question.trim())); }, [question, onDraftChange]);
-  useEffect(() => { setQuestion(''); setMoreSuggestions(false); onTrace(null); }, [equipment, tag, onTrace]);
+  useEffect(() => { setQuestion(''); onTrace(null); }, [equipment, tag, onTrace]);
   useEffect(() => {
     if (lastCancelVersion.current !== cancelVersion) {
       lastCancelVersion.current = cancelVersion;
@@ -72,7 +70,7 @@ export function AgentPanel({ registry, equipment, tag, onSelect, onTrace, onPend
   useEffect(() => {
     const element = transcript.current;
     if (element) element.scrollTop = element.scrollHeight;
-  }, [turns.length, latest?.status, moreSuggestions]);
+  }, [turns.length, latest?.status]);
   const suggestions = querySuggestions(equipment, tag);
   const canAsk = user.role === 'operator' && Boolean(equipment && tag) && !pending && Boolean(question.trim());
   const statusText = latest?.status === 'answered' ? `${latest.elapsed}초 만에 답변을 받았습니다.` : latest?.status === 'cancelled' ? '답변 기다리기를 취소했습니다. 지난 질문과 답변은 남아 있습니다.' : latest?.status === 'failed' ? '답변을 받지 못했습니다. 해당 메시지에서 다시 조회할 수 있습니다.' : '';
@@ -147,7 +145,7 @@ export function AgentPanel({ registry, equipment, tag, onSelect, onTrace, onPend
           <div className="chat-message chat-user"><span className="chat-speaker">나</span><p>{turn.question}</p><div className="chat-meta"><span>{turn.tag}</span><time dateTime={turn.requestedAt}>조회 요청 {requestTime(turn.requestedAt)}</time></div></div>
           <div className="chat-message chat-assistant"><span className="chat-speaker">AI</span>
             {turn.status === 'pending' && <div className="agent-waiting" data-testid="agent-waiting"><p>답변을 기다리고 있습니다<span className="chat-loading" aria-hidden="true">…</span></p><p className="chat-meta"><span data-testid="agent-elapsed" aria-live="off">{elapsedSeconds}초 경과</span> · 최대 6분 30초</p><p className="note">로컬 모델은 기기에 따라 몇 분 걸릴 수 있습니다.</p><button className="chat-cancel" onClick={() => request.current?.abort('cancelled')}>기다리기 취소</button></div>}
-            {turn.status === 'answered' && turn.answer && <div data-testid="agent-answer"><p className="agent-answer-text">{turn.answer.answer}</p><p className="agent-explanation">{turn.answer.explanation}</p>{turn.answer.limitations && <p className="note">{turn.answer.limitations}</p>}<TraceDetails traceId={turn.answer.trace_id} /><div className="chat-meta"><span>{turn.elapsed}초 · {turn.answer.model}</span><span>{turn.tag}</span></div><div className="explorer-actions"><button disabled={pending} onClick={() => explore(turn.tag)}>이 센서 데이터 탐색</button><button disabled={pending || user.role !== 'operator'} onClick={() => void ask('최근 값은 어떻게 변하고 있나요?', turn.equipment, turn.tag, false)}>추이 이어 묻기</button></div></div>}
+            {turn.status === 'answered' && turn.answer && <div data-testid="agent-answer"><p className="agent-answer-text">{turn.answer.answer}</p><details className="answer-context"><summary>답변 해석과 활용 범위</summary><p className="agent-explanation">{turn.answer.explanation}</p>{turn.answer.limitations && <p className="note">{turn.answer.limitations}</p>}</details><TraceDetails traceId={turn.answer.trace_id} /><div className="chat-meta"><span>{turn.elapsed}초 · {turn.answer.model}</span><span>{turn.tag}</span></div><div className="explorer-actions"><button disabled={pending} onClick={() => explore(turn.tag)}>이 센서 데이터 탐색</button><button disabled={pending || user.role !== 'operator'} onClick={() => void ask('최근 값은 어떻게 변하고 있나요?', turn.equipment, turn.tag, false)}>추이 이어 묻기</button></div></div>}
             {turn.status === 'failed' && turn.error && <div data-testid="agent-error"><p role="alert">{turn.error.message}</p>{turn.error.detail && <details><summary>오류 상세</summary><p className="agent-explanation">{turn.error.detail}</p></details>}{turn.error.traceId && <TraceDetails traceId={turn.error.traceId} />}</div>}
             {turn.status === 'cancelled' && <p>답변 기다리기를 취소했습니다. 서버 작업은 계속될 수 있습니다.</p>}
             {(turn.status === 'failed' || turn.status === 'cancelled') && <><button className="chat-retry" disabled={pending || user.role !== 'operator'} onClick={() => void ask(turn.question, turn.equipment, turn.tag, false)}>다시 조회</button><p className="chat-meta">{turn.elapsed}초 대기 · {turn.tag}</p></>}
@@ -155,8 +153,7 @@ export function AgentPanel({ registry, equipment, tag, onSelect, onTrace, onPend
         </li>)}
         <li className="chat-exploration" ref={exploration} tabIndex={-1} aria-label="센서 데이터 탐색"><ChatExplorer registry={registry} tag={tag} version={exploreVersion} pending={pending} canAsk={user.role === 'operator'} onSelect={onSelect} onAsk={(question, equipment, tag) => void ask(question, equipment, tag, false)} /></li>
         <li className="chat-suggestions" hidden={!tag}><p className="chat-status" role="status" data-testid="agent-status">{pending ? '답변을 기다리는 중…' : statusText}</p>
-          <div className="question-suggestions" aria-label="질문 예시">{suggestions.slice(0, turns.length ? 2 : 4).map(text => <button key={text} disabled={!tag} onClick={() => fillQuestion(text)}>{text}</button>)}</div>
-          <details className="chat-more" open={moreSuggestions} onToggle={event => setMoreSuggestions(event.currentTarget.open)}><summary>질문 예시 더 보기</summary><div className="question-suggestions">{suggestions.slice(turns.length ? 2 : 4).map(text => <button key={text} disabled={!tag} onClick={() => fillQuestion(text)}>{text}</button>)}</div></details>
+          {!turns.length && <div className="question-suggestions" aria-label="질문 예시">{suggestions.map(item => <button key={item.label} disabled={!tag || pending} aria-label={item.question} onClick={() => fillQuestion(item.question)}>{item.label}<span aria-hidden="true">↗</span></button>)}</div>}
         </li>
       </ol>
       <form className="chat-composer" onSubmit={event => { event.preventDefault(); if (canAsk && equipment && tag) void ask(question, equipment, tag, true); }}>

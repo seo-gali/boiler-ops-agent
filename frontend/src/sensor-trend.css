@@ -1,10 +1,17 @@
 .sensor-detail-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .sensor-detail .sensor-detail-heading h2 { margin: 0; min-width: 0; }
-.sensor-detail-heading .primary-button { flex: 0 0 auto; min-height: 38px; padding: 9px 12px; font-size: 12px; }
-.trend-window-note { color: var(--text-muted); font-size: 12px; line-height: 1.7; margin: 8px 0 12px; }
-.trend .trend-labels { gap: 12px; font-size: 11px; line-height: 1.6; flex-wrap: wrap; color: var(--text-muted); }
-.trend table { width: 100%; border-collapse: collapse; font-size: 12px; }
-.trend caption { text-align: left; line-height: 1.7; margin: 12px 0; }
-.trend th, .trend td { text-align: left; padding: 10px 7px; border-bottom: 1px solid var(--border); overflow-wrap: anywhere; }
-.trend th { font-weight: 600; color: var(--text); }
-@media (max-width: 360px) { .sensor-detail-heading { gap: 8px; }.sensor-detail-heading .primary-button { padding: 8px 9px; font-size: 11px; }.trend table { font-size: 11px; } }
+.sensor-detail-heading .primary-button { flex: 0 0 auto; min-height: 44px; padding: 10px 12px; font-size: 13px; }
+.trend { margin-top: 16px; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface-soft); }
+.trend-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 13px; }
+.trend-heading span, .trend-window-note { color: var(--text-muted); font-size: 12px; line-height: 1.8; }
+.trend-change { margin: 12px 0; font-size: 13px; }
+.trend-change strong { color: var(--text); font-variant-numeric: tabular-nums; }
+.trend table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 12px; }
+.trend th, .trend td { padding: 12px 6px; text-align: left; border-bottom: 1px solid var(--border); overflow-wrap: break-word; }
+.trend th:first-child { width: 51%; }
+.trend th:last-child { width: 18%; }
+.trend th { font-weight: 500; color: var(--text-muted); }
+.trend tbody tr:last-child td { border-bottom: 0; }
+.trend td:nth-child(2) { font-variant-numeric: tabular-nums; }
+.trend-window-note { margin: 12px 0 0; }
+@media (max-width: 360px) { .sensor-detail-heading { gap: 8px; } .sensor-detail-heading .primary-button { padding: 8px; font-size: 12px; } .trend { padding: 12px; } }

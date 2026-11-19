@@ -5,13 +5,14 @@ import type { Registry, Sensor } from './types';
 import type { WorkspaceTab } from './WorkspacePanel';
 import { ForecastPanel } from './ForecastPanel';
 import { validateRegistry } from './registry';
+import { Skeleton } from './Skeleton';
 
 const BoilerViewport = lazy(() => import('./BoilerScene').then(module => ({ default: module.BoilerViewport })));
 const WorkspacePanel = lazy(() => import('./WorkspacePanel').then(module => ({ default: module.WorkspacePanel })));
 const OperationsAnalysis = lazy(() => import('./OperationsAnalysis').then(module => ({ default: module.OperationsAnalysis })));
 const SimulatorPanel = lazy(() => import('./SimulatorPanel').then(module => ({ default: module.SimulatorPanel })));
 const AuditPanel = lazy(() => import('./RecordsPanel').then(module => ({ default: module.AuditPanel })));
-const loadingView = <p role="status">화면 불러오는 중…</p>;
+const loadingView = <Skeleton />;
 
 type MainView = 'monitoring' | 'analysis' | 'simulator' | 'audit';
 const views: { id: MainView; label: string }[] = [{ id: 'monitoring', label: '공장 모니터링' }, { id: 'analysis', label: '기간 조회' }, { id: 'simulator', label: '승인 연습' }, { id: 'audit', label: '변경 기록' }];
@@ -29,7 +30,7 @@ function RuntimeStatus() {
 
 function UpdateControls() {
   const paused = usePaused();
-  return <div className="update-controls"><button onClick={toggleUpdates} aria-pressed={paused}>화면 자동 갱신 {paused ? '재개' : '일시정지'}</button><span role="status">{paused ? '화면만 멈춤' : '갱신 중'}</span></div>;
+  return <div className="update-controls"><button onClick={toggleUpdates} aria-pressed={paused}>화면 자동 갱신 {paused ? '재개' : '일시정지'}</button><span className={paused ? '' : 'sr-only'} role="status">{paused ? '화면만 멈춤' : '갱신 중'}</span></div>;
 }
 
 function ObservationHeading() {
@@ -160,16 +161,16 @@ export default function App() {
       <section id="monitoring" tabIndex={-1} hidden={view !== 'monitoring'} aria-label="실시간 모니터링">
         <ObservationHeading />
         <div className="kpi-bar">{kpis.map(sensor => <KPI key={sensor.tag} sensor={sensor} selected={selected === sensor.tag} onSelect={() => { onSelect(sensor.tag); if (!tab) openPanel('sensor'); }} />)}</div>
-        <div className="monitor-grid">{registry ? <Suspense fallback={loadingView}><BoilerViewport registry={registry} selected={selected} onSelect={onSelect} onEquipment={onEquipment} onInspect={inspectSensor} active={view === 'monitoring'} /></Suspense> : <div className="panel loading" role="status">{error ? '설비 목록을 불러오지 못했습니다. 연결을 확인하고 다시 열어주세요.' : '설비 목록 불러오는 중…'}</div>}</div>
+        <div className="monitor-grid">{registry ? <Suspense fallback={loadingView}><BoilerViewport registry={registry} selected={selected} onSelect={onSelect} onEquipment={onEquipment} onInspect={inspectSensor} active={view === 'monitoring'} /></Suspense> : error ? <p role="alert">설비 목록을 불러오지 못했습니다. 연결을 확인하고 다시 열어주세요.</p> : loadingView}</div>
         <ForecastPanel active={view === 'monitoring'} />
       </section>
       <section id="analysis" tabIndex={-1} hidden={view !== 'analysis'} aria-label="기간 데이터 조회">{registry && loadedViews.analysis && <Suspense fallback={loadingView}><OperationsAnalysis registry={registry} /></Suspense>}</section>
       <section id="simulator" tabIndex={-1} hidden={view !== 'simulator'} aria-label="변경 승인 연습">{loadedViews.simulator && <Suspense fallback={loadingView}><SimulatorPanel agentTrace={agentEvidence} canPrepare={!chatState.pending} active={view === 'simulator'} onAudit={() => changeView('audit')} onPrepare={prepareAgent} /></Suspense>}</section>
       <section id="audit" tabIndex={-1} hidden={view !== 'audit'} aria-label="승인·변경 기록">{loadedViews.audit && <Suspense fallback={loadingView}><AuditPanel active={view === 'audit'} /></Suspense>}</section>
-      <details className="unit-guide page-unit-guide"><summary>단위는 컬럼 정의서 기준 · 숫자는 원본 그대로</summary><p>출력 MW · 유량 T/H · 온도 °C · 압력 kg/cm2g · 산소 %. 센서 상세에서 원본 식별자와 단위의 출처를 확인할 수 있습니다. 화면 자동 갱신을 멈춰도 서버의 데이터 수집과 별도 조회는 계속됩니다.</p></details>
+      <details className="unit-guide page-unit-guide"><summary>단위와 원본 데이터 안내</summary><p>출력 MW · 유량 T/H · 온도 °C · 압력 kg/cm2g · 산소 %. 숫자는 원본 그대로 표시하며, 센서별 식별자와 단위 출처는 센서 상세에서 확인할 수 있습니다.</p></details>
     </main>
-    <footer><span>© {new Date().getFullYear()} BoilerOps Agent · 공개 데이터 재생</span><span>관측 데이터 · 산업 안전 판정 없음</span></footer>
+    <footer className="app-footer"><span>© {new Date().getFullYear()} BoilerOps Agent</span></footer>
     <div className="workspace-launchers" hidden={!!tab}><button id="open-agent" className="primary-button" aria-label="AI 도우미 열기" aria-controls="workspace-panel" aria-expanded={false} onClick={() => openPanel('agent')}><span aria-hidden="true">✦</span><span>AI</span></button></div>
-    {registry && workspaceOpened && <Suspense fallback={loadingView}><WorkspacePanel registry={registry} selected={selected} tab={tab} onTab={changeTab} onClose={closePanel} onSelect={onSelect} onChatState={setChatState} onEvidence={setAgentEvidence} questionRequest={questionRequest} cancelVersion={chatCancel} /></Suspense>}
+    {registry && workspaceOpened && <Suspense fallback={tab ? <aside className="workspace-panel" aria-label="도우미 불러오는 중">{loadingView}</aside> : null}><WorkspacePanel registry={registry} selected={selected} tab={tab} onTab={changeTab} onClose={closePanel} onSelect={onSelect} onChatState={setChatState} onEvidence={setAgentEvidence} questionRequest={questionRequest} cancelVersion={chatCancel} /></Suspense>}
   </div>;
 }

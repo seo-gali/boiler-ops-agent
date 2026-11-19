@@ -3,6 +3,7 @@ import { apiFetch } from './session';
 import { sensorAreas, sensorCategories } from './sensor-catalog';
 import type { Registry } from './types';
 import './history.css';
+import { Skeleton } from './Skeleton';
 
 type Metadata = { first_time: string | null; last_time: string | null; row_count: number; time_basis: string; timezone_offset: string | null };
 type HistoryPoint = { source_row: number; source_time: string; raw: string; value: number | null; quality: 'valid' | 'missing' | 'parse_error'; gap_before: boolean };
@@ -120,7 +121,7 @@ function HistoryChart({ series }: { series: ChartSeries[] }) {
           </g>}
         </svg>
         {point && <div className="history-tooltip" id={detailId} data-testid="history-tooltip" aria-live={keyboard ? 'polite' : 'off'}
-          style={{ left: Math.min(Math.max(0, x(point) + 12), Math.max(0, width - 330)) / width * 100 + '%' }}>
+          data-keyboard={keyboard} style={keyboard ? undefined : { left: Math.min(Math.max(0, x(point) + 12), Math.max(0, width - 330)) / width * 100 + '%' }}>
           <strong>{readableTime(point.source_time)}</strong>
           {details.map(item => <div className="history-tooltip-reading" key={item.data.tag}>
             <span className="history-tooltip-name"><span className="history-color" style={{ background: item.color }} />{item.label}</span>
@@ -197,7 +198,7 @@ export function OperationsAnalysis({ registry }: { registry: Registry }) {
   return <section tabIndex={-1} className="analysis panel history-panel" aria-label="기간 조회">
     <div className="panel-heading"><div><span className="eyebrow">SOURCE HISTORY</span><h2>원하는 기간의 원본 데이터</h2><p className="note">비교할 센서를 추가하고 시작·종료 시각을 고르세요.</p></div><span className="quiet">CSV 원본 관측</span></div>
     <div className="history-content">
-      {metadataBusy ? <p role="status">원본 데이터의 조회 가능 기간을 확인하고 있습니다…</p> : metadata?.first_time && metadata.last_time ? <p className="history-availability" data-testid="history-availability">조회 가능 기간 <b>{readableTime(metadata.first_time)} ~ {readableTime(metadata.last_time)}</b><span>{metadata.row_count.toLocaleString()}개 시각 · {metadata.time_basis}{metadata.timezone_offset ? ' (' + metadata.timezone_offset + ')' : ''}</span></p> : metadata && <p role="status">원본 CSV에 관측 행이 없습니다.</p>}
+      {metadataBusy ? <Skeleton /> : metadata?.first_time && metadata.last_time ? <p className="history-availability" data-testid="history-availability">조회 가능 기간 <b>{readableTime(metadata.first_time)} ~ {readableTime(metadata.last_time)}</b><span>{metadata.row_count.toLocaleString()}개 시각 · {metadata.time_basis}{metadata.timezone_offset ? ' (' + metadata.timezone_offset + ')' : ''}</span></p> : metadata && <p role="status">원본 CSV에 관측 행이 없습니다.</p>}
       {!metadata && !metadataBusy && <button className="history-retry" onClick={() => setMetadataAttempt(value => value + 1)}>기간 정보 다시 읽기</button>}
       <form className="history-form" onSubmit={submit}>
         <fieldset className="history-sensor-field"><legend>비교할 센서</legend>
@@ -214,7 +215,7 @@ export function OperationsAnalysis({ registry }: { registry: Registry }) {
         <div><label htmlFor="history-end">종료 시각</label><input id="history-end" type="datetime-local" step="1" value={end} required onChange={event => { clearResult(); setEnd(event.target.value); }} /></div>
         <button className="primary-button" type="submit" disabled={busy || metadataBusy || !metadata?.row_count || !tags.length}>{busy ? '원본 조회 중…' : '기간 조회'}</button>
       </form>
-      {busy && <p role="status">선택한 {tags.length}개 센서의 기간 데이터를 읽고 있습니다. 센서나 기간을 바꾸면 현재 조회가 취소됩니다.</p>}
+      {busy && <Skeleton />}
       {error && <p className="history-error" role="alert">{error}</p>}
       {failures.map(failure => <p className="history-error" role="alert" key={failure.tag}>{registry.sensors[failure.tag]?.label ?? failure.tag}: {failure.message}</p>)}
       {!data && !busy && !error && metadata && <p className="history-empty">기본 기간은 처음 하루입니다. 조회 버튼을 누르면 센서마다 최대 1,000개의 실제 관측을 표시합니다.</p>}

@@ -38,18 +38,18 @@ export function ChatExplorer({ registry, tag, version, pending, canAsk, onSelect
   }
   return <section className="chat-explorer chat-message chat-assistant" aria-label="대화 안 데이터 탐색">
     <span className="chat-speaker">데이터 탐색</span>
-    <nav className="explorer-path" aria-label="데이터 탐색 경로">
-      <button onClick={() => browse({ equipment: null, area: null, tag: null })} aria-current={!group ? 'step' : undefined}>전체 설비</button>
-      {group && <><span aria-hidden="true">›</span><button onClick={() => browse({ equipment: group.id, area: null, tag: null })} aria-current={!area ? 'step' : undefined}>{group.name}</button></>}
-      {group && area && <><span aria-hidden="true">›</span><button onClick={() => browse({ equipment: group.id, area: area.name, tag: null })} aria-current={!sensor ? 'step' : undefined}>{area.name}</button></>}
+    <nav className="explorer-path" aria-label="데이터 탐색 경로"><ol>
+      <li><button onClick={() => browse({ equipment: null, area: null, tag: null })} aria-current={!group ? 'step' : undefined}>전체 설비</button></li>
+      {group && <li><button onClick={() => browse({ equipment: group.id, area: null, tag: null })} aria-current={!area ? 'step' : undefined}>{group.name}</button></li>}
+      {group && area && <li><button onClick={() => browse({ equipment: group.id, area: area.name, tag: null })} aria-current={!sensor ? 'step' : undefined}>{area.name}</button></li>}
+      </ol>
     </nav>
     <h3 ref={heading} tabIndex={-1}>{sensor ? sensor.label : area ? '어떤 센서를 볼까요?' : group ? '어느 부분을 살펴볼까요?' : '어떤 설비가 궁금한가요?'}</h3>
     {!sensor && <div className="explorer-choices">
       {!group ? categories.map(item => <button key={item.id} aria-label={`${item.name} · ${item.sensors.length}개 센서`} onClick={() => browse({ equipment: item.id, area: null, tag: null })}><span>{item.name}</span><small>{item.sensors.length}개 센서 <span aria-hidden="true">→</span></small></button>)
         : !area ? areas.map(item => <button key={item.name} aria-label={`${item.name} · ${item.sensors.length}개 센서`} onClick={() => browse({ equipment: group.id, area: item.name, tag: null })}><span>{item.name}</span><small>{item.sensors.length}개 센서 <span aria-hidden="true">→</span></small></button>)
           : area.sensors.map(item => {
-            const value = telemetry.current?.sensors[item.tag];
-            return <button key={item.tag} disabled={pending} aria-label={`${item.label} 선택`} onClick={() => pick(item.tag)}><span>{item.label}<small>{qualityName(value)}</small></span><b>{formatValue(value)} <small>{item.unit ?? '단위 미확인'}</small></b></button>;
+            return <button key={item.tag} disabled={pending} aria-label={`${item.label} 선택`} onClick={() => pick(item.tag)}><span>{item.label}</span><small>{item.unit ?? '단위 미확인'} <span aria-hidden="true">→</span></small></button>;
           })}
     </div>}
     {sensor && <div key={sensor.tag} className="explorer-sensor">

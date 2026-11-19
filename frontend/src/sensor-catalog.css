@@ -1,6 +1,6 @@
 .catalog-picker { color: var(--text); }
 .catalog-picker label, .catalog-step { display: block; color: var(--text); font-size: 13px; font-weight: 600; }
-.catalog-picker select { width: 100%; max-width: 100%; min-width: 0; margin: 8px 0 0; padding: 12px; border: 1px solid var(--border-control); background: var(--surface); color: var(--text); font: inherit; border-radius: 7px; text-overflow: ellipsis; }
+.catalog-picker select { width: 100%; max-width: 100%; min-width: 0; margin: 8px 0 0; padding: 10px 40px 10px 14px; min-height: 44px; border: 1px solid var(--border-control); background: var(--surface); color: var(--text); font: inherit; font-size: 14px; border-radius: 8px; text-overflow: ellipsis; }
 .catalog-picker select:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
 .catalog-areas { margin: 15px 0; }
 .catalog-areas > div { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }

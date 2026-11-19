@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict';
-import { createServer } from 'node:http';
 import { readFileSync, readdirSync, statSync, mkdirSync, writeFileSync } from 'node:fs';
-import { dirname, extname, resolve, sep } from 'node:path';
+import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import { chromium } from '../frontend/node_modules/playwright/index.mjs';
 import { inspect } from './review-ui.mjs';
+import { preview } from '../frontend/node_modules/vite/dist/node/index.js';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'frontend/dist');
@@ -40,15 +40,8 @@ const drilldownReadings = Object.fromEntries(drilldownTags.map((tag, index) => [
 const snapshot = sequence => ({ type: 'telemetry', status: 'LIVE', stale: false, kafka: 'CONNECTED', error: null, rejected_events: 0, replay_interval_ms: 1000, stale_after_ms: 60000,
   current: { run_id: 'isolated-bundle-check', sequence, source_time: `2026-01-01T00:00:${String(sequence).padStart(2, '0')}`, emitted_at: new Date().toISOString(), kafka_offset: sequence,
     sensors: { ...Object.fromEntries(equipment.map((item, index) => [item.primary_tag, { value: 100 + index + sequence, raw: String(100 + index + sequence), quality: 'valid', error: null }])), ...(drilldownReview ? drilldownReadings : {}) } } });
-const mime = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.woff2': 'font/woff2' };
-const server = createServer((request, response) => {
-  const pathname = decodeURIComponent(new URL(request.url, 'http://127.0.0.1').pathname);
-  const file = resolve(dist, '.' + (pathname === '/' ? '/index.html' : pathname));
-  if (!file.startsWith(dist + sep)) { response.writeHead(403).end(); return; }
-  try { response.writeHead(200, { 'Content-Type': mime[extname(file)] ?? 'application/octet-stream', 'Cache-Control': 'no-store' }); response.end(readFileSync(file)); }
-  catch { response.writeHead(404).end(); }
-});
-await new Promise(resolveListen => server.listen(0, '127.0.0.1', resolveListen));
+const { httpServer: server } = await preview({ root: resolve(root, 'frontend'),
+  preview: { host: '127.0.0.1', port: 0, strictPort: false } });
 const base = `http://127.0.0.1:${server.address().port}`;
 let browser;
 const poll = async (check, label) => {
@@ -65,7 +58,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1800, height: 1100 } });
   let authenticated = false;
   let role = drilldownReview ? 'operator' : 'viewer';
-  let holdAnswer = false;
+  let holdAnswer = false, holdMetadata = false, releaseMetadata;
   let releaseAnswer;
   const queries = [];
   let rangeActive = 0, rangeMaximum = 0, rangeStarted = 0;
@@ -85,14 +78,17 @@ try {
       const query = route.request().postDataJSON(); queries.push(query);
       if (holdAnswer) await new Promise(resolveAnswer => { releaseAnswer = resolveAnswer; });
       return json({ trace_id: 'fixture-trace-' + queries.length, model: 'isolated-fixture',
-        answer: query.tag + '의 현재 원본 관측을 확인했습니다.', explanation: '격리된 브라우저 검증용 답변입니다.', limitations: '실제 모델을 호출하지 않았습니다.' });
+        answer: query.tag + '의 현재 원본 관측을 확인했습니다. <img src=x onerror="window.fixtureXss=true">', explanation: '격리된 브라우저 검증용 답변입니다.', limitations: '실제 모델을 호출하지 않았습니다.' });
     }
     if (url.pathname === '/api/registry') return json(registry);
     if (url.pathname === '/api/forecast') return brandReview ? json({ target: '재열기 시험 센서', unit: '°C', input_value: 114, prediction: 114.2,
       selected_model: 'linear_ar', horizon_minutes: 5, forecast_time: '2026-01-01T00:05:11', advisory: '격리 UI 검증용 값입니다.', status: 'LIVE',
       beats_naive_on_test: false, test: { naive: { mae: .03, rmse: .08, samples: 10 }, linear_ar: { mae: .1, rmse: .11, samples: 10 } } })
       : json({ detail: '격리 검증에서는 예측 모델을 실행하지 않습니다.' }, 409);
-    if (url.pathname === '/api/history/metadata') return json({ first_time: '2026-01-01T00:00:00', last_time: '2026-01-02T00:00:00', row_count: 86401, time_basis: 'Synthetic fixture', timezone_offset: null });
+    if (url.pathname === '/api/history/metadata') {
+      if (holdMetadata) await new Promise(resolveMetadata => { releaseMetadata = resolveMetadata; });
+      return json({ first_time: '2026-01-01T00:00:00', last_time: '2026-01-02T00:00:00', row_count: 86401, time_basis: 'Synthetic fixture', timezone_offset: null });
+    }
     if (reliabilityReview && /\/api\/simulator\/proposals\/.+\/decision$/.test(url.pathname)) {
       decisionPosts++;
       const decision = route.request().postDataJSON();
@@ -106,7 +102,8 @@ try {
     }
     if (url.pathname === '/api/simulator') return simulatorReadFails ? json({ detail: 'Fixture read unavailable' }, 503)
       : json({ value: simulatorValue, revision: simulatorRevision, enabled: reliabilityReview, proposals: reliabilityReview ? [proposal] : [] });
-    if (url.pathname === '/api/simulator/audit') return json([]);
+    if (url.pathname === '/api/simulator/audit') return json([{ id: 1, created_at: 1700000000, proposal_id: 'fixture-proposal', event: 'proposed',
+      payload: { old_value: 0, requested_value: 1, intent: '검증용 변경 요청', recommendation: { action: 'increase' }, status: 'pending', raw: '0.00' } }]);
     if (url.pathname === '/api/sensors/history') return json({ tag: url.searchParams.get('tag'), unit: '°C', points: [] });
     if ((brandReview || reliabilityReview) && url.pathname === '/api/history/range') {
       if (reliabilityReview) {
@@ -131,7 +128,16 @@ try {
   const loadedScripts = new Set();
   page.on('pageerror', error => errors.push(String(error)));
   page.on('request', request => { const pathname = new URL(request.url()).pathname; if (pathname.endsWith('.js')) loadedScripts.add(pathname); });
-  await page.goto(base);
+  const documentResponse = await page.goto(base);
+  const policy = documentResponse.headers()['content-security-policy'];
+  assert.ok(policy.includes("script-src 'self'") && !policy.includes("script-src 'self' 'unsafe-inline'"));
+  for (const path of ['/.env', '/.env.security', '/.git/config', '/src/App.tsx', '/artifacts/simulator.sqlite', '/package.json']) {
+    const response = await context.request.get(base + path);
+    assert.ok(response.status() === 404 || (response.status() === 200 && await response.text() === html), 'Private file must not be served: ' + path);
+  }
+  await page.evaluate(() => { const script = document.createElement('script'); script.textContent = 'window.fixtureInlineScript=true'; document.body.append(script); });
+  assert.equal(await page.evaluate(() => window.fixtureInlineScript), undefined);
+  result.checks.push('Real Vite preview applies CSP, blocks inline scripts and does not serve environment, Git, source or database files');
   await page.getByRole('heading', { name: '운영 화면 로그인' }).waitFor();
   if (brandReview) {
     const colors = await page.evaluate(() => ({ background: getComputedStyle(document.body).backgroundColor,
@@ -169,7 +175,8 @@ try {
     await explorer.getByRole('button', { name: '급탄기 · 4개 센서', exact: true }).focus();
     await page.keyboard.press('Enter');
     await explorer.getByRole('button', { name: '급탄기 A · 3개 센서', exact: true }).click();
-    assert.ok((await explorer.textContent()).includes('원본 결측') && (await explorer.textContent()).includes('파싱 오류'));
+    assert.equal(await explorer.getByRole('button', { name: '급탄기 A 요구값 선택', exact: true }).count(), 1);
+    assert.ok(!(await explorer.textContent()).includes('0.00'), 'Sensor choices contain static labels, without live readings');
     await explorer.getByRole('button', { name: '급탄기 A 속도 평균값 선택', exact: true }).click();
     assert.ok((await page.getByTestId('agent-target').textContent()).includes(drilldownTags[0]));
     assert.ok((await explorer.textContent()).includes('0'));
@@ -178,7 +185,6 @@ try {
     await explorer.getByText('최근 2분 추이·원본값', { exact: true }).click();
     await explorer.getByTestId('sensor-trend').waitFor();
     await poll(() => apiRequests.includes('/api/sensors/history'), 'Deferred sensor history');
-    await explorer.getByText('추이 원본값 표로 보기', { exact: true }).click();
     assert.ok((await explorer.getByTestId('sensor-trend-source-table').textContent()).includes('0.00'));
     result.checks.push('Unselected chat drills into equipment, area and raw sensor; zero/missing/errors stay distinct and history loads on expansion');
 
@@ -195,6 +201,11 @@ try {
     assert.equal(queries.length, 1);
     holdAnswer = false; releaseAnswer();
     await page.getByTestId('agent-answer').waitFor();
+    assert.equal(await page.getByTestId('agent-answer').locator('img').count(), 0);
+    assert.ok((await page.getByTestId('agent-answer').textContent()).includes('<img'));
+    assert.equal(await page.evaluate(() => window.fixtureXss), undefined);
+    assert.equal(await page.locator('.answer-context').getAttribute('open'), null);
+    result.checks.push('Untrusted model markup is displayed as text, and supporting answer details start collapsed');
     await page.locator('#agent-question').fill('보관할 탐색 초안');
     page.once('dialog', dialog => dialog.dismiss());
     await explorer.getByRole('button', { name: '급탄기 A 요구값 선택', exact: true }).click();
@@ -291,7 +302,7 @@ try {
         decisionMode = 'normal';
         await confirm.check();
         await page.getByRole('button', { name: '승인 및 Simulator 실행', exact: true }).click();
-        await poll(async () => await page.getByTestId('proposal-status').textContent() === 'executed', 'Explicit retry completes');
+        await poll(async () => await page.getByTestId('proposal-status').getAttribute('data-status') === 'executed', 'Explicit retry completes');
       }
     }
     result.checks.push('Unknown decisions block writes, permit explicit server recheck and require fresh confirmation before retry');
@@ -302,7 +313,7 @@ try {
     await page.reload(); await navigateReliability('승인 연습');
     await confirm.check();
     await page.getByRole('button', { name: '거절', exact: true }).click();
-    await poll(async () => await page.getByTestId('proposal-status').textContent() === 'rejected', 'Lost rejection response reconciled');
+    await poll(async () => await page.getByTestId('proposal-status').getAttribute('data-status') === 'rejected', 'Lost rejection response reconciled');
     assert.equal(simulatorValue, unchanged);
     assert.ok((await page.locator('#sim-feedback').textContent()).includes('거절'));
     result.checks.push('Lost rejection responses recover the rejected status without changing the value');
@@ -338,6 +349,11 @@ try {
   await page.getByLabel('Simulator 요청', { exact: true }).fill('작성 상태 유지');
   await navigate('변경 기록');
   await page.getByRole('heading', { name: '내 승인·변경 기록' }).waitFor();
+  await page.locator('.record-intent').filter({ hasText: '검증용 변경 요청' }).waitFor();
+  assert.equal(await page.locator('.audit-content pre').count(), 0);
+  await page.getByText('요청·처리 정보', { exact: true }).click();
+  assert.ok((await page.locator('.audit-content .record-fields').first().textContent()).includes('0.00'));
+  result.checks.push('Audit entries show readable changes and preserve original values without raw JSON');
   await navigate('승인 연습');
   assert.equal(await page.getByLabel('Simulator 요청', { exact: true }).inputValue(), '작성 상태 유지');
   result.checks.push('Each view loads on demand; navigation focus, history inputs, Simulator draft and Canvas identity are preserved');
@@ -372,7 +388,7 @@ try {
         await page.getByTestId('history-chart').focus();
         await page.keyboard.press('Home');
         await page.getByTestId('history-tooltip').waitFor();
-        assert.equal(await page.locator('.history-series').count(), 2);
+        assert.equal(await page.locator('.history-series').count(), reliabilityReview ? 1 : 2);
       }
       await inspect(page, 'brand-' + label, out);
       await page.evaluate(() => window.scrollTo(0, 0));
@@ -413,6 +429,49 @@ try {
   await fallbackPage.getByRole('button', { name: '04 재열기', exact: true }).click();
   assert.ok((await fallbackPage.getByTestId('scene-selected').textContent()).includes('재열기 시험 센서'));
   result.checks.push('Missing WebGL also retains the keyboard accessible HTML equipment controls');
+  if (reliabilityReview) {
+    const uiPage = await context.newPage();
+    uiPage.on('pageerror', error => errors.push(String(error)));
+    await uiPage.emulateMedia({ reducedMotion: 'no-preference' });
+    await uiPage.goto(base);
+    await uiPage.getByRole('button', { name: 'AI 도우미 열기' }).click();
+    assert.equal(await uiPage.locator('#workspace-panel').evaluate(node => getComputedStyle(node).animationName), 'workspace-enter');
+    await uiPage.getByRole('tab', { name: '센서 상세', exact: true }).click();
+    await uiPage.locator('#sensor-group').waitFor();
+    await uiPage.locator('#sensor-group').selectOption('reheater');
+    const options = await uiPage.locator('#sensor-select option').allTextContents();
+    assert.ok(options.length > 1);
+    for (const socket of sockets) socket.send(JSON.stringify(snapshot(12)));
+    await poll(async () => await uiPage.getByTestId('sequence').textContent() === '12', 'Updated static picker');
+    assert.deepEqual(await uiPage.locator('#sensor-select option').allTextContents(), options);
+    assert.ok(options.every(label => !/11[0-9]/.test(label)), 'Static option labels omit telemetry numbers');
+    await uiPage.emulateMedia({ reducedMotion: 'reduce' });
+    assert.equal(await uiPage.locator('#workspace-panel').evaluate(node => getComputedStyle(node).animationName), 'none');
+    await uiPage.keyboard.press('Escape');
+    holdMetadata = true;
+    await uiPage.getByRole('navigation', { name: '페이지 메뉴' }).getByRole('link', { name: '기간 조회', exact: true }).click();
+    await uiPage.locator('#analysis .view-skeleton').waitFor();
+    await poll(() => !!releaseMetadata, 'Metadata request held');
+    holdMetadata = false; releaseMetadata();
+    await uiPage.getByTestId('history-availability').waitFor();
+    const controls = uiPage.locator('.history-form input, .history-form select, .history-form > .primary-button, .history-add');
+    const controlHeights = await controls.evaluateAll(nodes => nodes.map(node => Math.round(node.getBoundingClientRect().height)));
+    assert.ok(controlHeights.every(height => height === 44), 'Date, select and action controls align at 44px: ' + controlHeights.join(','));
+    await uiPage.getByRole('button', { name: '기간 조회', exact: true }).click();
+    const chart = uiPage.getByTestId('history-chart');
+    await chart.waitFor(); await chart.focus(); await uiPage.keyboard.press('End');
+    const tooltip = await uiPage.getByTestId('history-tooltip').boundingBox();
+    const note = await uiPage.locator('.history-chart-note').boundingBox();
+    assert.ok(tooltip.y + tooltip.height <= note.y, 'Keyboard tooltip leaves graph instructions readable');
+    await uiPage.locator('.history-series').screenshot({ path: resolve(out, 'keyboard-chart.png') });
+    assert.ok(!(await uiPage.locator('.app-footer').textContent()).includes('산업 안전'));
+    await uiPage.getByText('단위와 원본 데이터 안내', { exact: true }).click();
+    assert.equal(await uiPage.locator('.unit-guide p').evaluate(node => getComputedStyle(node).maxWidth), 'none');
+    await uiPage.evaluate(() => window.scrollTo(0, 0));
+    await uiPage.screenshot({ path: resolve(out, 'spacing-and-keyboard.png'), fullPage: true });
+    result.checks.push('Drawer motion, reduced motion, stable sensor choices, loading skeletons, aligned controls and keyboard tooltip spacing pass');
+    await uiPage.close();
+  }
   assert.deepEqual(errors, []);
   result.loadedScripts = [...loadedScripts];
   result.passed = true;

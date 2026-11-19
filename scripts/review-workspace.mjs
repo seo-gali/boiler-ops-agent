@@ -136,7 +136,6 @@ export async function reviewWorkspace({ page, context, apiFetch, base, out, root
   const reheater = registry.equipment.find(item => item.id === 'reheater');
   const feeders = registry.equipment.find(item => item.id === 'feeders');
   await choose(feeders.primary_tag);
-  await page.getByText('추이 원본값 표로 보기', { exact: true }).click();
   await poll(async () => await page.getByTestId('sensor-trend-source-row').count() === 3, 'Two-minute source rows');
   const recentRows = await page.getByTestId('sensor-trend-source-row').evaluateAll(nodes => nodes.map(node => [...node.cells].map(cell => cell.textContent)));
   assert.equal(Date.parse(recentRows.at(-1)[0].replace(' ', 'T') + 'Z') - Date.parse(recentRows[0][0].replace(' ', 'T') + 'Z'), 120000);
@@ -183,8 +182,8 @@ export async function reviewWorkspace({ page, context, apiFetch, base, out, root
   assert.equal(await page.getByLabel('질문', { exact: true }).inputValue(), '입력 검사\n');
   assert.equal(requests.length, 0); await page.getByLabel('질문', { exact: true }).fill('');
   assert.equal(await page.getByRole('button', { name: '질문 보내기', exact: true }).isDisabled(), true);
-  await page.getByText('질문 예시 더 보기', { exact: true }).click();
-  assert.ok(await page.locator('.question-suggestions button:visible').count() >= 8);
+  const suggestionCount = await page.locator('.question-suggestions button:visible').count();
+  assert.ok(suggestionCount >= 2 && suggestionCount <= 4);
   await page.getByLabel('질문', { exact: true }).fill('선택한 센서의 현재값은?');
   await respondToDialog(() => page.getByRole('button', { name: '도우미 닫기' }).click(), false, /작성 중/);
   assert.equal(await drawer.isVisible(), true);
@@ -235,9 +234,9 @@ export async function reviewWorkspace({ page, context, apiFetch, base, out, root
   const proposalResponse = page.waitForResponse(response => response.url().endsWith('/api/simulator/proposals'), { timeout: 380000 });
   await page.getByRole('button', { name: 'Agent Simulator 제안 생성', exact: true }).click();
   const proposed = await proposalResponse, proposal = await proposed.json(); assert.equal(proposed.status(), 200, JSON.stringify(proposal));
-  await poll(async () => await page.getByTestId('proposal-status').textContent() === 'pending', 'Proposal ready');
+  await poll(async () => await page.getByTestId('proposal-status').getAttribute('data-status') === 'pending', 'Proposal ready');
   await page.getByRole('checkbox').check(); await page.getByRole('button', { name: '승인 및 Simulator 실행', exact: true }).click();
-  await poll(async () => await page.getByTestId('proposal-status').textContent() === 'executed', 'Confirmed execution');
+  await poll(async () => await page.getByTestId('proposal-status').getAttribute('data-status') === 'executed', 'Confirmed execution');
   await page.screenshot({ path: resolve(out, 'approval-workspace.jpg'), type: 'jpeg', quality: 82 });
   await page.getByRole('button', { name: '승인·변경 기록 보기', exact: true }).click(); await page.getByRole('heading', { name: '변경 실행', exact: true }).waitFor();
   const audit = await json('/api/simulator/audit'); assert.ok(audit.some(row => row.event === 'executed' && row.proposal_id === proposal.id));

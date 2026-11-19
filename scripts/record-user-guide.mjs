@@ -250,7 +250,6 @@ try {
     await point(page.getByTestId('inspector-value'));
   });
   await beat('최근 추이는 최신 원본 시각 기준 2분입니다.\n표를 펼치면 원본값과 결측 여부를 직접 확인할 수 있습니다.', async () => {
-    await click(page.getByText('추이 원본값 표로 보기', { exact: true }));
     await point(page.getByTestId('sensor-trend-source-table'));
     await page.screenshot({ path: resolve(out, 'sensor.png') });
   });

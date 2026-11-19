@@ -42,7 +42,7 @@ FILES = [
     'backend/app/agent/tools.py', 'backend/app/agent/service.py', 'backend/app/model_client.py', 'backend/app/agent/traces.py',
     'backend/app/agent/answers.py',
     'backend/app/simulator/service.py', 'backend/app/forecast/train.py', 'backend/app/forecast/service.py',
-    'frontend/src/telemetry.ts', 'frontend/src/types.ts', 'frontend/src/App.tsx', 'frontend/src/AgentPanel.tsx',
+    'frontend/src/telemetry.ts', 'frontend/src/types.ts', 'frontend/src/App.tsx', 'frontend/src/AgentPanel.tsx', 'frontend/src/Skeleton.tsx',
     'frontend/src/SimulatorPanel.tsx', 'frontend/src/ForecastPanel.tsx', 'frontend/src/OperationsAnalysis.tsx',
     'frontend/src/BoilerScene.tsx', 'frontend/src/WorkspacePanel.tsx', 'frontend/src/ChatExplorer.tsx',
     'frontend/src/SensorPicker.tsx', 'frontend/src/SensorInspector.tsx', 'frontend/src/SensorTrend.tsx', 'frontend/src/RecordsPanel.tsx',

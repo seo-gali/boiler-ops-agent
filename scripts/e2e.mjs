@@ -315,7 +315,7 @@ try {
     assert.equal((await rawFetch(decisionUrl, { method: 'POST', headers: { Origin: frontendUrl, 'Content-Type': 'application/json' }, body: JSON.stringify(decision) })).status, 401);
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: '승인 및 Simulator 실행', exact: true }).click();
-    await poll(async () => await page.getByTestId('proposal-status').textContent() === 'executed', 'approved execution');
+    await poll(async () => await page.getByTestId('proposal-status').getAttribute('data-status') === 'executed', 'approved execution');
     assert.equal(await page.getByTestId('sim-value').textContent(), '1');
     const headers = { 'Content-Type': 'application/json' };
     assert.equal((await apiFetch(decisionUrl, { method: 'POST', headers, body: JSON.stringify(decision) })).status, 409);
@@ -338,7 +338,7 @@ try {
     const rejectedProposal = await (await rejectResponse).json();
     await page.getByRole('checkbox').check();
     await page.getByRole('button', { name: '거절', exact: true }).click();
-    await poll(async () => await page.getByTestId('proposal-status').textContent() === 'rejected', 'rejected proposal');
+    await poll(async () => await page.getByTestId('proposal-status').getAttribute('data-status') === 'rejected', 'rejected proposal');
     assert.equal(await page.getByTestId('sim-value').textContent(), '1');
     assert.equal((await apiFetch(`${base}/api/simulator/proposals/${rejectedProposal.id}/decision`, { method: 'POST', headers, body: JSON.stringify({ ...decision, expected_revision: 1 }) })).status, 409);
     const audit = await (await apiFetch(`${base}/api/simulator/audit`)).json();

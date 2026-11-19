@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Registry } from './types';
-import { formatValue, useTelemetry } from './telemetry';
 import { sensorArea, sensorAreas, sensorCategories, sensorCategoryName } from './sensor-catalog';
 import './sensor-catalog.css';
 
 export function SensorPicker({ registry, selected, onSelect }: { registry: Registry; selected: string | null; onSelect: (tag: string) => void }) {
-  const telemetry = useTelemetry();
   const current = registry.sensors[selected ?? ''];
   const categories = sensorCategories(registry);
   const [category, setCategory] = useState(current?.equipment ?? categories[0]?.id ?? '');
@@ -40,11 +38,9 @@ export function SensorPicker({ registry, selected, onSelect }: { registry: Regis
     <div className="catalog-results-heading"><label htmlFor="sensor-select">3. 센서를 고르세요</label><span role="status">{visible.length}개 센서</span></div>
     <select id="sensor-select" value={selectedInGroup ? selected ?? '' : ''} onChange={event => pick(event.target.value)} aria-describedby="sensor-choice-help" data-testid="sensor-select">
       <option value="" disabled>확인할 센서를 선택하세요</option>
-      {sensorAreas(visible).map(item => <optgroup key={item.name} label={item.name}>{item.sensors.map(sensor => {
-        const reading = telemetry.current?.sensors[sensor.tag];
-        const value = reading?.quality === 'missing' ? '결측' : formatValue(reading);
-        return <option key={sensor.tag} value={sensor.tag}>{sensor.label} · {value} {sensor.unit ?? '단위 미확인'}</option>;
-      })}</optgroup>)}
+      {sensorAreas(visible).map(item => <optgroup key={item.name} label={item.name}>{item.sensors.map(sensor =>
+        <option key={sensor.tag} value={sensor.tag}>{sensor.label} · {sensor.unit ?? '단위 미확인'}</option>
+      )}</optgroup>)}
     </select>
     <p id="sensor-choice-help" className="catalog-choice-help">센서를 선택하면 아래에서 현재값과 최근 2분의 기록을 확인할 수 있습니다.</p>
     {current && <p className="catalog-selection" data-testid="sensor-selection-path"><b>현재 선택</b><span>{sensorCategoryName(current, registry)} › {sensorArea(current)} › {current.label}</span></p>}

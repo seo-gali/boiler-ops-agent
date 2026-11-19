@@ -1,5 +1,5 @@
 .history-panel .panel-heading .note { margin: 6px 0 0; font-size: 12px; }
-.history-content { padding: 18px 22px 24px; }
+.history-content { padding: 24px; }
 .history-availability { display: grid; gap: 5px; margin: 0 0 18px; color: var(--text-muted); font-size: 12px; line-height: 1.6; }
 .history-availability b { color: var(--text); font-size: 13px; font-weight: 600; }
 .history-availability span { color: var(--text-muted); font-size: 11px; }
@@ -7,10 +7,10 @@
 .history-form > div, .history-sensor-controls > div { display: grid; min-width: 0; gap: 7px; }
 .history-form .history-sensor-field { grid-column: 1 / -1; min-width: 0; margin: 0 0 4px; padding: 0 0 18px; border: 0; border-bottom: 1px solid var(--border); }
 .history-sensor-field legend { padding: 0 0 12px; font-size: 15px; font-weight: 650; color: var(--text); }
-.history-sensor-controls { display: grid; grid-template-columns: minmax(140px, .65fr) minmax(240px, 1.8fr) auto; align-items: end; gap: 12px; }
+.history-sensor-controls { display: grid; grid-template-columns: minmax(140px, .65fr) minmax(200px, 1.8fr) minmax(140px, auto); align-items: end; gap: 12px; }
 .history-form label { color: var(--text); font-size: 12px; font-weight: 600; }
-.history-form input, .history-form select { width: 100%; min-width: 0; height: 42px; padding: 8px 10px; border: 1px solid var(--border-control); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; }
-.history-form button { min-height: 42px; padding-inline: 20px; }
+.history-form input, .history-form select { width: 100%; min-width: 0; height: 44px; padding: 10px 14px; border: 1px solid var(--border-control); border-radius: 4px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; }
+.history-form button { min-height: 44px; height: 44px; padding: 10px 20px; line-height: 1.4; }
 .history-form .history-add { display: flex; gap: 10px; align-items: center; justify-content: center; border: 1px solid var(--border); border-radius: 6px; background: var(--surface-soft); color: var(--text); font: inherit; font-size: 13px; cursor: pointer; }
 .history-add:disabled { color: var(--text-muted); border-color: var(--border); background: var(--surface-soft); cursor: default; }
 .history-selection-heading { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 14px; margin: 18px 0 10px; color: var(--text); font-size: 12px; }
@@ -40,7 +40,7 @@
 .history-sampling, .history-chart-note { font-size: 11px; line-height: 1.7; color: var(--text-muted); }
 .history-chart { width: 100%; min-width: 0; margin: 20px 0; }
 .history-chart svg { display: block; width: 100%; height: auto; overflow: visible; }
-.history-chart svg:focus-visible { outline-offset: 5px; border-radius: 3px; }
+.history-chart svg:focus-visible { outline-offset: 3px; border-radius: 8px; }
 .history-legend { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 0; margin: 0 0 14px; color: var(--text); font-size: 12px; list-style: none; }
 .history-legend > li { display: flex; gap: 7px; align-items: baseline; line-height: 1.6; overflow-wrap: anywhere; }
 .history-color { display: inline-block; flex: none; width: 9px; height: 9px; border-radius: 50%; }
@@ -59,7 +59,9 @@
 .history-gridline { stroke: var(--border); stroke-width: 1; }
 .history-series { fill: none; stroke: var(--chart-1); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
 .history-observation { fill: var(--chart-1); }
-.history-chart-note { margin: 0; text-align: center; }
+.history-chart-note { margin: 18px 0 0; padding-inline: 8px; text-align: left; font-size: 12px; }
+.history-tooltip[data-keyboard=true] { position: static; width: 100%; max-height: none; margin-top: 18px; box-shadow: none; display: flex; flex-wrap: wrap; gap: 16px 28px; }
+.history-tooltip[data-keyboard=true] .history-tooltip-reading { border: 0; padding-top: 0; }
 .history-table, .forecast-details { border-top: 1px solid var(--border); padding-top: 14px; }
 .history-table summary, .forecast-details summary { cursor: pointer; font-size: 12px; color: var(--text); padding: 7px 0; }
 .history-table .table-scroll { max-height: 420px; overflow: auto; }
@@ -84,3 +86,6 @@
   .history-tooltip { top: 20px; width: min(300px, 100%); max-height: 170px; padding: 9px 11px; }
   .history-tooltip-reading > b { font-size: 15px; }
 }
+
+.history-form select { padding-right: 40px; }
+.history-form .primary-button { font-size: 14px; }
