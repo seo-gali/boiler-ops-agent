@@ -1,0 +1,26 @@
+# 저장소 루트에서 사용. APP_PUBLIC_ORIGIN은 실제 HTTPS Origin으로 설정.
+{$APP_PUBLIC_ORIGIN} {
+	root * ./frontend/dist
+	header {
+		-Server
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=()"
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'"
+		Cache-Control "no-store"
+	}
+	@private path /.git* /.env* /src/* /data/* /artifacts/* /docs/* *.map
+	handle @private {
+		respond 404
+	}
+	@api path /api /api/*
+	handle @api {
+		reverse_proxy 127.0.0.1:8000
+	}
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}

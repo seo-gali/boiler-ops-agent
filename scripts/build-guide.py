@@ -21,7 +21,7 @@ FILES = [
     'docs/results/phase3-operational-monitoring.md', 'docs/results/phase4-read-agent.md',
     'docs/results/phase6-controlled-simulator.md',
     'docs/results/phase7-local-start.md',
-    'docs/results/phase7-security-hardening.md',
+    'docs/results/phase7-security-hardening.md', 'docs/results/release-security-review.md',
     'docs/results/phase7-security-audit.md', 'docs/results/phase7-ui-accessibility-review.md',
     'docs/results/phase7-integrated-validation.md', 'docs/results/phase5-temperature-forecast.md',
     'docs/instructions/phase7-security-hardening.md', '.project/plan.md', 'DESIGN.md',
@@ -34,6 +34,7 @@ FILES = [
     'docs/results/phase7-data-oriented.md',
     'docs/fonts/README.md',
     'docs/brand.css',
+    'infra/Caddyfile',
     'backend/app/main.py', 'backend/app/security.py', 'backend/app/observability.py', 'backend/app/replay/producer.py', 'backend/app/replay/csv_source.py',
     'backend/app/domain/state.py', 'backend/app/domain/history.py', 'backend/app/streaming/consumer.py',
     'backend/app/websocket/hub.py',
@@ -50,6 +51,7 @@ FILES = [
     'frontend/src/game-scene.css', 'frontend/src/chat.css', 'frontend/src/history.css',
     'frontend/src/sensor-trend.css', 'frontend/src/workspace.css',
     'scripts/import-sensor-definitions.py', 'scripts/dataset_path.py',
+    'scripts/check-security.py', 'scripts/check-https-security.mjs',
 ]
 
 

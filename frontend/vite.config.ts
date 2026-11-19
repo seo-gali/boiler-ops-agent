@@ -1,7 +1,9 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
-const headers = { 'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store' };
+const headers = { 'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()' };
+const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
 export default defineConfig(({ mode }) => {
   const apiPort = Number(loadEnv(mode, '.', 'BOILER_API_PORT').BOILER_API_PORT ?? '8000');
   if (!Number.isInteger(apiPort) || apiPort < 1024 || apiPort > 65535) throw new Error('Invalid BOILER_API_PORT');
@@ -9,7 +11,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     server: { proxy, headers, strictPort: true },
-    preview: { proxy, headers, strictPort: true },
+    preview: { proxy, headers: { ...headers, 'Content-Security-Policy': contentSecurityPolicy }, strictPort: true },
     build: { rollupOptions: { output: {
       onlyExplicitManualChunks: true,
       manualChunks(id) {

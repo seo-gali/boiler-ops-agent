@@ -25,8 +25,17 @@ class HttpObservability:
             nonlocal status, response_started
             if message["type"] == "http.response.start":
                 status, response_started = message["status"], True
-                message["headers"] = [(key, value) for key, value in message.get("headers", []) if key.lower() != b"x-request-id"]
-                message["headers"].append((b"x-request-id", request_id.encode()))
+                # 조기 거부와 내부 오류에도 동일한 응답 보호 적용
+                protected = {
+                    b"x-request-id": request_id.encode(), b"cache-control": b"no-store",
+                    b"x-content-type-options": b"nosniff", b"x-frame-options": b"DENY",
+                    b"referrer-policy": b"no-referrer", b"permissions-policy": b"camera=(), microphone=(), geolocation=()",
+                    b"content-security-policy": b"default-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+                }
+                if self.owner.state.security.secure_cookie and scope.get("scheme") == "https":
+                    protected[b"strict-transport-security"] = b"max-age=31536000"
+                message["headers"] = [(key, value) for key, value in message.get("headers", []) if key.lower() not in protected]
+                message["headers"].extend(protected.items())
             await send(message)
 
         try:
@@ -58,6 +67,9 @@ class HttpObservability:
             entry["max_duration_ms"] = max(entry["max_duration_ms"], duration)
             record = {"event": "http_request", "request_id": request_id, "method": method, "route": route,
                       "status": status, "duration_ms": round(duration, 3)}
+            if status in (401, 403, 429):
+                record.update(event="security_rejection", client_ip=(scope.get("client") or ("unknown", 0))[0])
             if error_type:
                 record["error_type"] = error_type
-            logger.log(logging.ERROR if status >= 500 else logging.INFO, json.dumps(record, ensure_ascii=False))
+            logger.log(logging.ERROR if status >= 500 else logging.WARNING if status in (401, 403, 429) else logging.INFO,
+                       json.dumps(record, ensure_ascii=False))

@@ -44,6 +44,7 @@ class Session:
 class Security:
     cookie_name = "boiler_session"
     body_limit = 8192
+    header_limit = 16384
     session_limit = 100
     connection_limit = 32
     user_connection_limit = 4
@@ -173,8 +174,18 @@ class SecurityMiddleware:
             return await self.app(scope, receive, send)
         security = self.owner.state.security
         headers = dict(scope.get("headers", []))
+        if sum(len(key) + len(value) + 4 for key, value in scope.get("headers", [])) > security.header_limit:
+            if scope["type"] == "websocket":
+                return await send({"type": "websocket.close", "code": 1008})
+            return await JSONResponse({"detail": "Request headers too large"}, status_code=431)(scope, receive, send)
+        if security.secure_cookie and scope.get("scheme") not in ("https", "wss"):
+            if scope["type"] == "websocket":
+                return await send({"type": "websocket.close", "code": 1008})
+            return await JSONResponse({"detail": "HTTPS required"}, status_code=403)(scope, receive, send)
         try:
-            host = urlparse("http://" + headers.get(b"host", b"").decode("latin-1")).hostname
+            parsed_host = urlparse("http://" + headers.get(b"host", b"").decode("latin-1"))
+            parsed_host.port
+            host = parsed_host.hostname if not (parsed_host.username or parsed_host.password or parsed_host.path or parsed_host.query or parsed_host.fragment) else None
         except ValueError:
             host = None
         if host != security.hostname:
@@ -183,14 +194,6 @@ class SecurityMiddleware:
             return await JSONResponse({"detail": "Host not allowed"}, status_code=400)(scope, receive, send)
         if scope["type"] == "websocket":
             return await self.app(scope, receive, send)
-
-        async def secured_send(message):
-            if message["type"] == "http.response.start":
-                message["headers"] = list(message.get("headers", [])) + [
-                    (b"cache-control", b"no-store"), (b"x-content-type-options", b"nosniff"),
-                    (b"x-frame-options", b"DENY"), (b"referrer-policy", b"no-referrer"),
-                    (b"content-security-policy", b"default-src 'none'; frame-ancestors 'none'")]
-            await send(message)
 
         try:
             method, path = scope["method"], scope["path"]
@@ -230,6 +233,6 @@ class SecurityMiddleware:
                     return {"type": "http.request", "body": bytes(body), "more_body": False}
                 return await receive()
 
-            await self.app(scope, buffered_receive, secured_send)
+            await self.app(scope, buffered_receive, send)
         except HTTPException as error:
-            await JSONResponse({"detail": error.detail}, status_code=error.status_code, headers=error.headers)(scope, receive, secured_send)
+            await JSONResponse({"detail": error.detail}, status_code=error.status_code, headers=error.headers)(scope, receive, send)

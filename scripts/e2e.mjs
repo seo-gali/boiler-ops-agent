@@ -39,7 +39,8 @@ Object.assign(env, { APP_PUBLIC_ORIGIN: frontendUrl, AUTH_SESSION_SECONDS: '3600
   AUTH_USERS_JSON: JSON.stringify(accounts.map(({ user_id, role, key }) => ({ user_id, role, key_hash: createHash('sha256').update(key).digest('hex') }))),
   KAFKA_ADMIN_PASSWORD: randomBytes(32).toString('hex'), KAFKA_PRODUCER_PASSWORD: randomBytes(32).toString('hex'), KAFKA_CONSUMER_PASSWORD: randomBytes(32).toString('hex'),
   KAFKA_HOST_PORT: '19092', KAFKA_SECURITY_PROTOCOL: 'SASL_PLAINTEXT', COMPOSE_PROJECT_NAME: 'boiler-ops-security-e2e' });
-const rawFetch = globalThis.fetch;
+// 동기 CLI 실행 중 닫힌 유휴 소켓의 재사용 방지
+const rawFetch = (url, init = {}) => globalThis.fetch(url, { ...init, headers: { Connection: 'close', ...init.headers } });
 let cookie = '';
 const apiFetch = (url, init = {}) => rawFetch(url, { ...init, headers: { Origin: frontendUrl, Cookie: cookie, ...init.headers } });
 async function loginApi(account = accounts[0]) {
@@ -50,7 +51,7 @@ async function loginApi(account = accounts[0]) {
 async function loginBrowser(page) {
   await page.goto(frontendUrl);
   mkdirSync(resolve(root, 'docs/images'), { recursive: true });
-  if (!agentReview && !workspaceReview) await page.screenshot({ path: resolve(root, 'docs/images/login.jpg'), type: 'jpeg', quality: 78 });
+  if (!securityOnly && !agentReview && !workspaceReview) await page.screenshot({ path: resolve(root, 'docs/images/login.jpg'), type: 'jpeg', quality: 78 });
   await page.getByLabel('사용자 ID', { exact: true }).fill(accounts[0].user_id);
   await page.getByLabel('개인 접근 키', { exact: true }).fill(accounts[0].key);
   await page.getByRole('button', { name: '로그인', exact: true }).click();
@@ -96,7 +97,7 @@ try {
   const profile = JSON.parse(execFileSync(python, ['-m', 'scripts.dataset_profile'], { cwd: root, env, encoding: 'utf8', maxBuffer: 4 * 1024 * 1024 }));
   writeFileSync(resolve(out, 'input.json'), JSON.stringify(profile, null, 2));
   result.input_sha256 = profile.sha256;
-  const apiArgs = ['-m', 'uvicorn', 'backend.app.main:app', '--host', '127.0.0.1', '--port', String(apiPort), '--ws-max-size', '1024', '--ws-max-queue', '8', '--limit-concurrency', '64', '--timeout-keep-alive', '5'];
+  const apiArgs = ['-m', 'uvicorn', 'backend.app.main:app', '--host', '127.0.0.1', '--port', String(apiPort), '--no-access-log', '--ws-max-size', '1024', '--ws-max-queue', '8', '--limit-concurrency', '64', '--timeout-keep-alive', '5'];
   let backend = start(python, apiArgs, 'backend');
   start(process.execPath, ['node_modules/vite/bin/vite.js', 'preview', '--host', '127.0.0.1', '--port', String(frontendPort), '--strictPort'], 'frontend', resolve(root, 'frontend'));
   await poll(async () => (await rawFetch(`${base}/api/health`)).ok, 'API readiness');

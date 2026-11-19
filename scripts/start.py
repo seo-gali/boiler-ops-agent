@@ -252,6 +252,7 @@ def main(config_dir, no_browser, reset_key=False):
         runner.run([npm, "run", "build", "--prefix", "frontend"], "frontend-build", timeout=180)
         say("[5/6] API와 화면 서버를 시작합니다.")
         runner.start([PYTHON, "-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", "8000",
+                      "--no-access-log",
                       "--ws-max-size", "1024", "--ws-max-queue", "8", "--limit-concurrency", "64", "--timeout-keep-alive", "5"], "api")
         runner.wait_ready(lambda: json_get("http://127.0.0.1:8000/api/health") == {"status": "ok"}, "API")
         runner.start(["node", str(ROOT / "frontend/node_modules/vite/bin/vite.js"), "preview", "--host", "127.0.0.1",

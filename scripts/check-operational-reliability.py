@@ -168,6 +168,7 @@ async def observability():
 async def run():
     security = object.__new__(Security)
     security.hostname, security.origin = "127.0.0.1", "http://127.0.0.1"
+    security.secure_cookie = False
     security.buckets, security.sessions = {}, {}
     for role in ("operator", "viewer"):
         token = "fixture-" + role

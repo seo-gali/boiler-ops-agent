@@ -44,6 +44,7 @@
 | 초기 기능별 구현 | [Phase 1](results/phase1-realtime-monitoring.md), [Phase 2](results/phase2-domain-mapping.md), [Phase 3](results/phase3-operational-monitoring.md), [Phase 4](results/phase4-read-agent.md), [Phase 5](results/phase5-temperature-forecast.md), [Phase 6](results/phase6-controlled-simulator.md) | 초기 재현 근거; 현재 동작은 기능별 지침 확인 |
 | 통합 실패 경로 | [통합 검증 결과](results/phase7-integrated-validation.md) | 당시 CSV·Kafka·모델·브라우저 연결 |
 | 보안 취약점 발견·수정 | [최초 감사](results/phase7-security-audit.md), [보안 보완](results/phase7-security-hardening.md) | 최초 감사는 수정 전 상태; 보완 결과와 함께 읽기 |
+| 출시 전 보안·시크릿·의존성 | [출시 보안 점검](results/release-security-review.md) | 2026-11-18~20 검증, 실제 HTTPS·보안 E2E와 최종 의존성 감사 포함 |
 | 실제 질문과 답변 | [AI 답변 검수](results/phase7-agent-answers.md) | 해당 질문·모델·원본 근거의 평가 |
 | 실행·개인 키 재발급 | [로컬 실행 결과](results/phase7-local-start.md) | 10월 10일 추가 검증 포함 |
 | 화면·접근성 | [UI 검수](results/phase7-ui-accessibility-review.md) | 당시 브라우저 검증; 실제 보조기기 미검증 |

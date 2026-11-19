@@ -70,6 +70,7 @@ class Security(AppSecurity):
     def __init__(self):
         self.calls, self.failure = 0, None
         self.hostname, self.origin = "127.0.0.1", "http://127.0.0.1"
+        self.secure_cookie = False
         self.buckets, self.connections = {}, Counter()
         self.sessions = {hashlib.sha256(b"fixture").hexdigest(): Session(principal, time.time() + 300)}
 
