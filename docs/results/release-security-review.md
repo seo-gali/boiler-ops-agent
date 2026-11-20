@@ -124,3 +124,22 @@ npm run build --prefix frontend
 11월 18일 npm CLI의 high 4개는 당시 결과이며 이 최종 상태의 경고 수로 사용하지 않는다. 이번 검사는 lock에 있는 npm/Python 패키지와 공개 취약점 DB 범위다. 컨테이너 OS·호스트·GPU 드라이버·모델 파일의 공급망 감사나 미공개 취약점 검증은 포함하지 않는다.
 
 공개 도메인·공인 CA 발급/갱신·실제 배포·외부 경보 전달은 검증하지 않았다.
+
+## 2026-11-21 브라우저 환경 변수 노출 점검
+
+.gitignore는 Git 추적을 제어하며 빌드 시 공개를 막는 기능은 아니다. [Vite 공식 문서](https://vite.dev/guide/env-and-mode#env-variables)에 따라 VITE_*는 기본적으로 클라이언트에 공개될 수 있다. 파일뿐 아니라 프로세스에 외부 주입된 값도 포함된다.
+
+현재 frontend/src에는 import.meta.env·process.env 사용이 없고, 실제 .env·.env.security와 상속된 프로세스 환경에도 VITE_/NEXT_PUBLIC_/EXPO_PUBLIC_ 이름이 없었다. Supabase·Next.js·Expo 연동은 사용하지 않는다. frontend/vite.config.ts의 loadEnv는 서버의 숫자형 BOILER_API_PORT만 선택하며 전체 환경 변수를 define에 전달하는 코드는 없다.
+
+공개 환경 변수 사용처가 없는 이 앱의 Vite 설정에 `envPrefix: []`를 추가했다. [envPrefix](https://vite.dev/config/shared-options.html#envprefix) 빈 배열은 사용자 환경 변수의 자동 주입을 끄며, 모든 값을 공개하는 위험한 빈 문자열과 다르다. 이 설정은 Vite 기본 MODE/PROD/DEV 상수를 유지한다.
+
+[scripts/check-client-env.mjs](../../scripts/check-client-env.mjs)는 실제 프로젝트의 Vite 설정으로 시험용 클라이언트를 빌드하고 개발 모듈도 변환한다. 프로세스 주입·모드별 .env 파일·서버 전용 값·잘못 이름 붙인 서비스 키를 가짜 난수로 검사하며 실제 키는 쓰지 않는다. 변경 전 기본 VITE_ 설정에서 가짜 프로세스 값의 번들 포함을 재현했고, 변경 후에는 다음 4개 검사가 종료 0으로 통과했다.
+
+- 프로덕션 산출물에 환경 파일·외부 주입 가짜 값이 포함되지 않음.
+- 기본 Vite 상수는 유지하고 사용자 환경 변수 직접 참조는 undefined.
+- 개발 클라이언트 모듈에도 가짜 값이 포함되지 않음.
+- 서버 전용 API 프록시 포트 설정은 유지.
+
+`npm run build --prefix frontend`의 TypeScript/Vite 빌드와 `check-bundle-performance.mjs --reliability --brand`의 브라우저 회귀 검사 22개도 종료 0이다. 실제 빌드 산출물 15개를 서버 자격 5개 값과 내부 대조해 일치 0건을 확인했다. 값 자체는 출력하거나 결과 파일에 남기지 않았다. 산출물 비교는 현재 서버 설정에 대한 확인이며 알 수 없는 외부 키까지 보장하는 검사는 아니다.
+
+결과는 artifacts/security/client-env-check.json과 client-env-current-build.json이다. 이 변경은 키 재발급·서비스 설정·패키지/lock·DB를 변경하지 않는다. 향후 define·하드코딩·API 응답·public 파일로 시크릿을 넣는 동작까지 자동 차단하는 기능은 아니므로 해당 경계도 계속 검토해야 한다.

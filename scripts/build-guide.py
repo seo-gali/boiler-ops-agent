@@ -51,7 +51,7 @@ FILES = [
     'frontend/src/game-scene.css', 'frontend/src/chat.css', 'frontend/src/history.css',
     'frontend/src/sensor-trend.css', 'frontend/src/workspace.css',
     'scripts/import-sensor-definitions.py', 'scripts/dataset_path.py',
-    'scripts/check-security.py', 'scripts/check-https-security.mjs',
+    'scripts/check-security.py', 'scripts/check-https-security.mjs', 'scripts/check-client-env.mjs',
 ]
 
 

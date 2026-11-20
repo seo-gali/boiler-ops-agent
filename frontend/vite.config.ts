@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   if (!Number.isInteger(apiPort) || apiPort < 1024 || apiPort > 65535) throw new Error('Invalid BOILER_API_PORT');
   const proxy = { '/api': { target: `http://127.0.0.1:${apiPort}`, ws: true } };
   return {
+    envPrefix: [],
     plugins: [react()],
     server: { proxy, headers, strictPort: true },
     preview: { proxy, headers: { ...headers, 'Content-Security-Policy': contentSecurityPolicy }, strictPort: true },
