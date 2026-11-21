@@ -8,6 +8,7 @@ from statistics import linear_regression, mean
 
 from backend.app.config import Settings
 from backend.app.replay.csv_source import rows
+from backend.app.integrity import record_forecast, verified_open
 
 TARGET = "최종재열기 입구 온도 평균값"
 HORIZON = 5
@@ -52,7 +53,7 @@ def train():
     predictors = {"naive": lambda x: x, "linear_ar": lambda x: intercept + slope * x}
     validation_metrics = {name: metrics(validation, predict) for name, predict in predictors.items()}
     selected = min(validation_metrics, key=lambda name: validation_metrics[name]["mae"])
-    with settings.dataset.open('rb') as file:
+    with verified_open(settings.dataset, 'dataset') as file:
         digest = hashlib.file_digest(file, 'sha256').hexdigest()
     report = {"version": 1, "target": TARGET, "horizon_minutes": HORIZON, "dataset_sha256": digest,
               "row_count": n, "train_samples": len(training), "slope": slope, "intercept": intercept,
@@ -66,6 +67,7 @@ def train():
     path = Path(os.getenv("FORECAST_MODEL_PATH", "artifacts/models/reheater.json"))
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(report, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
+    record_forecast(path)
     return report
 
 

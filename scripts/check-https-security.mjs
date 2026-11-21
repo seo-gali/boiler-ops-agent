@@ -8,11 +8,15 @@ import { createServer } from 'node:net';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '../frontend/node_modules/playwright/index.mjs';
+import { importMapCsp, verifyFile, verifyBuild } from './frontend-integrity.mjs';
 
 const root = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const outputRoot = resolve(root, 'artifacts/security/https-verification');
 const out = resolve(outputRoot, `run-${Date.now()}`);
 const caddy = resolve(root, 'artifacts/security/tools/caddy.exe');
+const expectedCaddy = JSON.parse(readFileSync(resolve(root, 'infra/resource-integrity.json'), 'utf8')).files.caddy.sha256;
+verifyFile(caddy, expectedCaddy);
+verifyBuild(resolve(root, 'frontend/dist'));
 const python = resolve(root, '.venv/Scripts/python.exe');
 const httpPort = 18080, httpsPort = 18443, apiPort = 8000;
 const base = `https://127.0.0.1:${httpsPort}`;
@@ -20,6 +24,7 @@ mkdirSync(out, { recursive: true });
 const key = randomBytes(32).toString('base64url');
 const accounts = JSON.stringify([{ user_id: 'tls-fixture', role: 'operator', key_hash: createHash('sha256').update(key).digest('hex') }]);
 const env = { ...process.env, PYTHONUTF8: '1', APP_PUBLIC_ORIGIN: base, AUTH_SESSION_SECONDS: '60', AUTH_USERS_JSON: accounts,
+  FRONTEND_IMPORT_MAP_CSP: importMapCsp(),
   XDG_DATA_HOME: resolve(out, 'caddy-data'), XDG_CONFIG_HOME: resolve(out, 'caddy-config'),
   SIMULATOR_DB_PATH: resolve(out, 'fixture.sqlite'),
   AGENT_TRACE_DIR: resolve(out, 'traces'), FORECAST_MODEL_PATH: resolve(out, 'no-model.json') };
@@ -63,6 +68,7 @@ const children = [], logs = [], checks = [];
 const result = { passed: false, run: out, scope: 'Real Caddy TLS, Uvicorn, browser and WebSocket; synthetic observations, ephemeral credentials and isolated SQLite; no public deployment or system trust changes', checks };
 let browser, ca;
 function start(command, args, name) {
+  if (command === caddy) verifyFile(caddy, expectedCaddy);
   const stream = createWriteStream(resolve(out, name + '.log')); logs.push(stream);
   const child = spawn(command, args, { cwd: root, env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout.pipe(stream); child.stderr.pipe(stream); children.push(child);
@@ -96,6 +102,7 @@ try {
   for (const port of [apiPort, httpPort, httpsPort]) await new Promise((resolvePort, reject) => {
     const probe = createServer(); probe.once('error', reject); probe.listen(port, '127.0.0.1', () => probe.close(resolvePort));
   });
+  verifyFile(caddy, expectedCaddy);
   execFileSync(caddy, ['adapt', '--config', configPath, '--adapter', 'caddyfile', '--validate'], { cwd: root, env, stdio: 'pipe', windowsHide: true });
   pass('Production Caddyfile adapts and validates with isolated loopback TLS settings');
   start(python, ['-m', 'uvicorn', 'fixture_app:app', '--app-dir', out, '--lifespan', 'off', '--host', '127.0.0.1', '--port', String(apiPort),

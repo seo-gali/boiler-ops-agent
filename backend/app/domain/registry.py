@@ -1,7 +1,9 @@
 import json
 from pathlib import Path
+from backend.app.integrity import verified_open
 
-DEFINITIONS = json.loads(Path(__file__).with_name('sensor_definitions.json').read_text(encoding='utf-8'))
+with verified_open(Path(__file__).with_name('sensor_definitions.json'), 'sensor-definitions') as source:
+    DEFINITIONS = json.load(source)
 
 EQUIPMENT = [
     {"id": "feeders", "label": "Feeders", "name": "급탄기", "description": "석탄을 공급하는 설비입니다. 급탄기 속도와 관련 값을 확인합니다.", "primary_tag": "급탄기 A 속도 평균값 ", "position": [-7.45, 0, 3.54], "size": [1.8, 1.9, 1.7]},

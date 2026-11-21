@@ -3,13 +3,15 @@ import math
 import os
 from datetime import datetime, timedelta
 from pathlib import Path
+from backend.app.integrity import verified_open
 
 
 def forecast(state):
     path = Path(os.getenv("FORECAST_MODEL_PATH", "artifacts/models/reheater.json"))
     if not path.is_file():
         raise ValueError("Forecast model not trained; run python -m backend.app.forecast.train")
-    model = json.loads(path.read_text(encoding='utf-8'))
+    with verified_open(path, 'forecast') as source:
+        model = json.load(source)
     if not state.current:
         raise ValueError("No telemetry available for forecast")
     target = model["target"]

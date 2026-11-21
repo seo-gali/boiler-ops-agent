@@ -7,13 +7,16 @@ from pathlib import Path
 import re
 from zipfile import ZipFile
 import xml.etree.ElementTree as ET
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+from backend.app.integrity import verified_open
 NS = {"s": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 
 
 def read_definitions(path):
-    with ZipFile(path) as archive:
+    with verified_open(path, 'definitions-source') as source, ZipFile(source) as archive:
         strings = [''.join(node.itertext()) for node in ET.fromstring(archive.read('xl/sharedStrings.xml')).findall('s:si', NS)] if 'xl/sharedStrings.xml' in archive.namelist() else []
         sheet = ET.fromstring(archive.read('xl/worksheets/sheet1.xml'))
         rows = []
@@ -38,7 +41,8 @@ def main():
     dataset = args.dataset or (datasets[0] if len(datasets) == 1 else None)
     if dataset is None:
         raise SystemExit('운전데이터 CSV를 --dataset으로 지정하세요.')
-    with dataset.open(encoding='utf-8-sig', newline='') as stream:
+    from io import TextIOWrapper
+    with verified_open(dataset, 'dataset') as raw, TextIOWrapper(raw, encoding='utf-8-sig', newline='') as stream:
         tags = next(csv.reader(stream))
     sensors = {}
     for row_number, cells in read_definitions(args.definitions):
@@ -58,7 +62,7 @@ def main():
     result = {"source_file": args.definitions.name, "source_sha256": hashlib.sha256(args.definitions.read_bytes()).hexdigest(),
               "dataset_sha256": hashlib.sha256(dataset.read_bytes()).hexdigest(), "sensors": sensors}
     target = ROOT / 'backend/app/domain/sensor_definitions.json'
-    target.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    target.write_text(json.dumps(result, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='\n')
     print(f'원본과 대조한 센서 단위 {len(sensors)}개 저장: {target.relative_to(ROOT)}')
 
 

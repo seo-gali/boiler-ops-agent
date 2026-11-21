@@ -1,11 +1,13 @@
 import csv
 from datetime import datetime
+from io import TextIOWrapper
 
 from backend.app.config import Settings
+from backend.app.integrity import verified_open
 
 
 def columns(settings: Settings) -> list[str]:
-    with settings.dataset.open(encoding=settings.encoding, newline="") as source:
+    with verified_open(settings.dataset, 'dataset') as raw, TextIOWrapper(raw, encoding=settings.encoding, newline='') as source:
         header = next(csv.reader(source), [])
     if not header or any(not tag.strip() for tag in header) or len(set(header)) != len(header):
         raise ValueError("CSV header is empty or contains empty/duplicate tags")
@@ -17,7 +19,7 @@ def columns(settings: Settings) -> list[str]:
 def records(settings: Settings, header: list[str]):
     time_index = header.index(settings.time_column)
     previous = None
-    with settings.dataset.open(encoding=settings.encoding, newline="") as source:
+    with verified_open(settings.dataset, 'dataset') as raw, TextIOWrapper(raw, encoding=settings.encoding, newline='') as source:
         reader = csv.reader(source)
         next(reader)
         for sequence, cells in enumerate(reader, 1):

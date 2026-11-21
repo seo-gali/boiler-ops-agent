@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "files": {
+    "font": {
+      "path": "docs/fonts/PretendardVariable.woff2",
+      "sha256": "9599f12fd42fc0bce1cd50b47a0c022e108d7aa64dd0d1bb0ed44f3282d900b4",
+      "source": "https://raw.githubusercontent.com/orioncactus/pretendard/v1.3.9/packages/pretendard/dist/web/variable/woff2/PretendardVariable.woff2"
+    },
+    "sensor-definitions": {
+      "path": "backend/app/domain/sensor_definitions.json",
+      "sha256": "64872315eefbbf211eba8ca9a5597f7f3879ebbeda8d9d6b2415ae2ec679e672",
+      "source": "Reviewed source mapping in this repository"
+    },
+    "gitleaks": {
+      "version": "8.30.1",
+      "path": "artifacts/security/gitleaks.exe",
+      "sha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+      "source": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_windows_x64.zip",
+      "archive_algorithm": "sha256",
+      "archive_hash": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e",
+      "checksums_source": "https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_checksums.txt",
+      "checksums_sha256": "061476c21adaf5441516f96f185c1a4706a83cd6329b9b38762271b3d4a52fae",
+      "archive_member": "gitleaks.exe"
+    },
+    "caddy": {
+      "version": "2.11.9",
+      "path": "artifacts/security/tools/caddy.exe",
+      "sha256": "2622e239c79df700b0eb92cbd950d1edee365e155a7859f358f0e55f002df591",
+      "source": "https://github.com/caddyserver/caddy/releases/download/v2.11.9/caddy_2.11.9_windows_amd64.zip",
+      "archive_algorithm": "sha512",
+      "archive_hash": "98753d5d42650383d00619ac70917a217141f9e92314185bf6c1b8b439cfcfdf8393da0ebb4675c8cb3b23d29a19aabe99dc5aca64fa1bfc3a1ba22509b06871",
+      "checksums_source": "https://github.com/caddyserver/caddy/releases/download/v2.11.9/caddy_2.11.9_checksums.txt",
+      "checksums_sha256": "e4e1e43b78299733b19b8aeab8abebcf57aef4f5dae617be125016f9e4e0299f",
+      "archive_member": "caddy.exe"
+    },
+    "dataset": {
+      "path": "data/raw/한국중부발전(주)_(AI 친화 데이터)분 단위 발전설비(보일러) 운전데이터_20250404.csv",
+      "sha256": "fb995b76ab26e11f2c66226c9b2aa54388e0c04e41d6ce3a8106cef804cd2419",
+      "source": "User-approved existing file baseline; compared with reviewed sensor source metadata",
+      "enrolled_on": "2026-11-21"
+    },
+    "definitions-source": {
+      "path": "data/raw/CustomExcelView.xlsx",
+      "sha256": "7b5b753c4ea18c1cc9fd5487b29d91a0696d6d742c9995ccc5feb87adbfa36ce",
+      "source": "User-approved existing file baseline; compared with reviewed sensor source metadata",
+      "enrolled_on": "2026-11-21"
+    }
+  },
+  "ollama": {
+    "qwen2.5-coder:7b": {
+      "manifest": "registry.ollama.ai/library/qwen2.5-coder/7b",
+      "sha256": "dae161e27b0e90dd1856c8bb3209201fd6736d8eb66298e75ed87571486f4364",
+      "source": "https://registry.ollama.ai/v2/library/qwen2.5-coder/manifests/7b"
+    }
+  },
+  "kafka": {
+    "reference": "apache/kafka:3.9.1@sha256:4ceccc577f03f51f6af8dbfda55194d0d892f4fa7913ffbded567ce3895622ed",
+    "source": "https://registry-1.docker.io/v2/apache/kafka/manifests/3.9.1"
+  }
+}

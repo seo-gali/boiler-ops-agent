@@ -2,6 +2,15 @@
 
 ## 현재 계약
 
+### 리소스 무결성
+
+- `infra/resource-integrity.json`에 검토한 외부 파일의 SHA-256, 공식 모델 manifest와 Kafka 이미지 digest를 고정한다. 시작·조회 경로에서 기준 누락·파일 누락·불일치는 실패로 처리하고 자동으로 기준을 덮어쓰지 않는다.
+- CSV·컬럼 정의서·예측 보고서는 검증한 파일 핸들에서 읽는다. 로컬 학습은 검증한 CSV로 생성한 결과만 별도 무결성 기록에 등록한다. SQLite·Trace·로그·시크릿은 변경되는 운영 데이터이므로 고정 해시 대상에 넣지 않는다.
+- Ollama는 고정 manifest와 그 안의 모든 blob을 시작 및 모델 호출 전에 검증한다. 기본 모델 외에는 검토된 manifest 등록이 필요하다. 기존 모델이 손상되면 자동 다운로드로 숨기지 않는다.
+- Python은 frozen lock·새 설치, 프런트는 `npm ci --ignore-scripts --no-audit --no-fund`로 설치 아카이브를 검증하고 재사용 설치본을 교체한 뒤 실행한다. 버전과 lock은 변경하지 않는다. 사전에 설치한 Python·uv·Node·npm·Docker·Ollama와 OS는 신뢰 기반이다.
+- 프런트 빌드는 원본 폰트를 검증한 뒤 산출물별 해시를 기록한다. preview는 시작 및 정적 파일 요청 때 대조한다. 진입 JS·단일 CSS에는 SRI, 지연 로딩 JS에는 [표준 import map integrity](https://html.spec.whatwg.org/multipage/webappapis.html#import-maps)를 사용한다. CSP는 해당 import map의 정확한 해시만 허용하고 임의 inline script는 계속 차단한다. 문서 생성도 외부 폰트 검증을 먼저 수행한다.
+- 기준 파일과 검증 코드를 함께 수정할 권한이 있는 공격자까지 해시만으로 방어할 수는 없다. 배포 시 기준과 코드는 신뢰된 릴리스에서 읽기 전용으로 제공해야 한다. 공개 배포는 별도 승인과 배포 점검을 따른다.
+
 로그인한 사용자가 무엇을 할 수 있고 어떤 기록을 볼 수 있는지 정한다. 로그인 상태를 세션, 로그인한 사용자 정보를 `Principal`이라고 부른다. AI 조회 기록은 Trace, 승인·변경 기록은 Audit다.
 
 ```text

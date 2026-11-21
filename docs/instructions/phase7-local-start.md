@@ -5,7 +5,7 @@
 사용자는 Docker Desktop을 켜고 프로젝트 루트에서 `npm start`를 실행한다. 기존 도구와 의존성을 사용한다. 화면을 빌드한 뒤 제공하는 로컬 확인 모드이며, 코드 자동 반영이 필요한 수동 개발 모드는 유지한다. 기존 인증·권한과 실제 Kafka 경계를 생략하지 않는다.
 
 ```text
-npm start → uv → scripts/start.py
+npm start → scripts/start.mjs → uv → scripts/start.py
                    ├─ 도구·파일·포트 확인
                    ├─ 최초 설정·개인 키 준비 (기존 파일 보존)
                    ├─ Kafka 시작·Topic 권한 준비
@@ -20,11 +20,14 @@ npm start → uv → scripts/start.py
 - `Runner.start(args, name, *, transient=False, console=False, cwd=ROOT)`: 비밀을 인수에 넣지 않고 환경으로 전달. 자식 로그는 `artifacts/local-start/`에 보관한다.
 - `Runner.wait_ready(probe, label, timeout=60)`: 제한 시간과 자식 조기 종료를 확인한다.
 - `Runner.close()`: 자신이 시작한 자식 트리만 종료한다. 이미 실행 중이던 Kafka·Ollama는 유지한다. 새로 시작한 Kafka는 stop만 하고 삭제하지 않는다.
-- 루트 `package.json`의 `start`와 `start:reset-key`는 기존 `uv run --frozen` 진입점을 사용한다. Python은 `uv.lock`, 화면 의존성은 `frontend/package-lock.json`을 사용한다.
+- 루트 `package.json`의 `start`와 `start:reset-key`는 Node 부트스트랩에서 포트를 확인한 뒤 `uv run --frozen --reinstall --no-cache --no-build`를 실행한다. 이미 실행 중이면 의존성을 건드리기 전에 중단한다. Python은 `uv.lock`, 화면 의존성은 `frontend/package-lock.json`을 사용한다.
+- Python 설치본과 `node_modules`를 무검증으로 재사용하지 않는다. 프런트 dev/build/preview의 pre hook은 lock 기준 `npm ci --ignore-scripts --no-audit --no-fund`를 수행한다. 인터넷 연결과 복원 시간이 필요하며, 신규 버전이나 lock 갱신은 하지 않는다.
+- CSV·모델·폰트의 기대 해시가 없거나 다르면 실행을 중단한다. 기존 예측 파일의 누락·변조는 자동 재학습으로 숨기지 않는다. 예측 파일이 처음부터 없을 때만 검증된 CSV로 학습하고 생성 해시를 기록한다. [무결성 기준과 검사](../local-development.md#리소스-무결성-검사)를 따른다.
 - `.env.security`가 없을 때 기존 발급 도구를 실행한다. 키 원문은 사용자 터미널에 한 번만 표시하고 실행 로그·검증 아티팩트에는 저장하지 않는다.
 - 사용자 요청(2026-10-10): `npm run start:reset-key` → `start.py --reset-key` → `setup-security.py --reset-user operator`. 기존 설정이 있으면 유효성을 검사한 뒤 해당 사용자의 `key_hash`만 원자적으로 교체한다. ID·역할·다른 사용자·Kafka 자격은 유지한다.
 - 기존 API 포트가 사용 중이거나 `AUTH_USERS_JSON` 환경 변수가 파일보다 우선하면 키 변경 전에 중단한다. 없는 사용자나 손상된 계정 설정도 새 계정으로 자동 대체하지 않는다.
 - Windows 실제 콘솔에서 숨겨진 자식 프로세스의 표준 출력을 상속하면 키 표시가 누락될 수 있다. 자식의 출력·오류를 메모리 파이프로 받아 부모 실행기가 터미널에 직접 전달한다. 키 발급용 로그 파일은 만들지 않으며, 전달 실패를 성공으로 처리하지 않는다.
+- Node 부트스트랩도 uv의 출력·오류를 파이프로 받아 터미널에 직접 전달한다. 별도 출력 로그나 키 사본은 만들지 않는다.
 - 쉬운 실행은 학습 보고서의 시험 시작 행 이상에서 재생해 예측을 확인할 수 있게 한다. 이 선택은 해당 프로세스 환경에만 적용한다.
 
 ## 구현 전 실패 검토

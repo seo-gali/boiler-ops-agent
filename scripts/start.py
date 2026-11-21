@@ -17,6 +17,8 @@ import webbrowser
 
 from dotenv import dotenv_values
 from dataset_path import discover_dataset
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from backend.app.integrity import IntegrityError, manifest, verified_open, verify_ollama
 
 ROOT = Path(__file__).resolve().parents[1]
 URL = "http://127.0.0.1:5173"
@@ -176,6 +178,9 @@ def prepare_config(runner, config_dir, reset_key=False):
     values = {**dotenv_values(config_file), **dotenv_values(security_file)}
     runner.env = {**{key: value for key, value in values.items() if value is not None}, **runner.env}
     env = runner.env
+    for name in ('BOILER_INTEGRITY_MANIFEST', 'OLLAMA_MODELS'):
+        if name in env:
+            os.environ[name] = env[name]
     required = ("BOILER_DATASET_PATH", "KAFKA_BOOTSTRAP_SERVERS", "KAFKA_TOPIC", "KAFKA_SECURITY_PROTOCOL",
                 "APP_PUBLIC_ORIGIN", "OLLAMA_BASE_URL", "OLLAMA_MODEL", "FORECAST_MODEL_PATH")
     missing = [key for key in required if not env.get(key)]
@@ -191,6 +196,8 @@ def prepare_config(runner, config_dir, reset_key=False):
     dataset = Path(env.get("BOILER_DATASET_PATH", ""))
     if not dataset.is_file():
         raise StartError("원본 CSV가 없습니다. data/raw 폴더와 .env의 BOILER_DATASET_PATH를 확인하세요.")
+    with verified_open(dataset, 'dataset'):
+        pass
     return dataset
 
 
@@ -213,6 +220,8 @@ def main(config_dir, no_browser, reset_key=False):
             raise StartError("Docker Desktop을 켜고 엔진이 준비되면 npm start를 다시 실행하세요.") from None
         dataset = prepare_config(runner, config_dir, reset_key)
         env = runner.env
+        if 'image: ' + manifest()['kafka']['reference'] not in (ROOT / 'docker-compose.yml').read_text(encoding='utf-8'):
+            raise IntegrityError('Kafka image must match the pinned digest')
         say("[2/6] 데이터 전달 서비스를 준비합니다.")
         running = runner.run(runner.compose + ["ps", "--status", "running", "--quiet", "kafka"], "kafka-status").strip()
         if not running:
@@ -230,25 +239,27 @@ def main(config_dir, no_browser, reset_key=False):
         if not tags or not isinstance(tags.get("models"), list):
             raise StartError("Ollama 모델 목록을 읽지 못했습니다. Ollama 실행 상태를 확인하세요.")
         if model not in [item["name"] for item in tags["models"]]:
+            if model not in manifest().get('ollama', {}):
+                raise IntegrityError('Ollama model has no trusted manifest; download blocked')
             say(f"  처음 사용할 모델 {model}을 다운로드합니다. 수 GB의 공간과 시간이 필요합니다.")
             runner.run(["ollama", "pull", model], "model-download", timeout=1800)
-        with dataset.open("rb") as source:
+        verify_ollama(model)
+        with verified_open(dataset, 'dataset') as source:
             digest = hashlib.file_digest(source, "sha256").hexdigest()
         model_file = Path(env["FORECAST_MODEL_PATH"])
         report = None
         if model_file.is_file():
-            try:
-                report = json.loads(model_file.read_text(encoding="utf-8"))
-            except (OSError, ValueError):
-                pass
-        if not isinstance(report, dict) or report.get("dataset_sha256") != digest or not isinstance(report.get("test_start_row"), int):
+            with verified_open(model_file, 'forecast') as source:
+                report = json.load(source)
+        else:
             runner.run([PYTHON, "-m", "backend.app.forecast.train"], "forecast-training", timeout=180)
-            report = json.loads(model_file.read_text(encoding="utf-8"))
+            with verified_open(model_file, 'forecast') as source:
+                report = json.load(source)
+        if not isinstance(report, dict) or report.get("dataset_sha256") != digest or not isinstance(report.get("test_start_row"), int):
+            raise IntegrityError('Forecast report does not match the verified dataset')
         env["REPLAY_START_ROW"] = str(max(int(env.get("REPLAY_START_ROW", "1")), report["test_start_row"]))
         say(f"  예측을 확인할 수 있는 CSV {env['REPLAY_START_ROW']}행부터 재생합니다.")
         say("[4/6] 화면을 준비합니다.")
-        if not (ROOT / "frontend/node_modules/vite/bin/vite.js").is_file():
-            runner.run([npm, "ci", "--prefix", "frontend"], "frontend-install", timeout=600)
         runner.run([npm, "run", "build", "--prefix", "frontend"], "frontend-build", timeout=180)
         say("[5/6] API와 화면 서버를 시작합니다.")
         runner.start([PYTHON, "-m", "uvicorn", "backend.app.main:app", "--host", "127.0.0.1", "--port", "8000",
@@ -294,7 +305,7 @@ def main(config_dir, no_browser, reset_key=False):
     except KeyboardInterrupt:
         return 0
     except (StartError, OSError, ValueError, KeyError) as error:
-        say(f"\n시작하지 못했습니다: {error if isinstance(error, StartError) else '설정 또는 파일 형식을 확인하세요.'}")
+        say(f"\n시작하지 못했습니다: {error if isinstance(error, (StartError, IntegrityError)) else '설정 또는 파일 형식을 확인하세요.'}")
         if not isinstance(error, StartError):
             say(f"오류 종류: {type(error).__name__}. 기존 설정은 자동으로 교체하지 않습니다.")
         return 1

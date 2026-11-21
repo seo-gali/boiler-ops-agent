@@ -4,8 +4,11 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "predev": "npm ci --ignore-scripts --no-audit --no-fund",
     "dev": "vite --host 127.0.0.1",
+    "prebuild": "npm ci --ignore-scripts --no-audit --no-fund",
     "build": "tsc --noEmit && vite build",
+    "prepreview": "npm ci --ignore-scripts --no-audit --no-fund",
     "preview": "vite preview --host 127.0.0.1",
     "e2e": "node ../scripts/e2e.mjs"
   },

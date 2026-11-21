@@ -29,6 +29,7 @@
 | 연습용 변경안·승인·Audit | [Phase 6](instructions/phase6-controlled-simulator.md) |
 | 전체 연결·실패 상황 | [통합 검증](instructions/phase7-integrated-validation.md) |
 | 인증·소유권·요청 한도 | [보안 계약](instructions/phase7-security-hardening.md) |
+| 외부 리소스 해시·변조 차단 | [무결성 실행 안내](local-development.md#리소스-무결성-검사), [보안 계약](instructions/phase7-security-hardening.md#리소스-무결성) |
 | 질문별 근거·답변 | [AI 답변](instructions/phase7-agent-answers.md) |
 | 한 명령 실행·키 재발급 | [로컬 실행](instructions/phase7-local-start.md) |
 | 공장·센서 선택·채팅·기간 조회 | [작업 화면](instructions/phase7-workspace.md) |
@@ -45,6 +46,7 @@
 | 통합 실패 경로 | [통합 검증 결과](results/phase7-integrated-validation.md) | 당시 CSV·Kafka·모델·브라우저 연결 |
 | 보안 취약점 발견·수정 | [최초 감사](results/phase7-security-audit.md), [보안 보완](results/phase7-security-hardening.md) | 최초 감사는 수정 전 상태; 보완 결과와 함께 읽기 |
 | 출시 전 보안·시크릿·의존성 | [출시 보안 점검](results/release-security-review.md) | 2026-11-18~21 검증, HTTPS·보안 E2E·의존성·환경 변수 노출 점검 포함 |
+| 외부 파일·모델·화면 빌드 변조 차단 | [리소스 무결성 결과](results/phase7-resource-integrity.md) | 11월 21일 검사, 기존 파일 기준 등록 승인과 재설치·전체 시작 미검증 구분 |
 | 실제 질문과 답변 | [AI 답변 검수](results/phase7-agent-answers.md) | 해당 질문·모델·원본 근거의 평가 |
 | 실행·개인 키 재발급 | [로컬 실행 결과](results/phase7-local-start.md) | 10월 10일 추가 검증 포함 |
 | 화면·접근성 | [UI 검수](results/phase7-ui-accessibility-review.md) | 당시 브라우저 검증; 실제 보조기기 미검증 |

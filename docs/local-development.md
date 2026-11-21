@@ -36,7 +36,7 @@ docker info --format '{{.ServerVersion}}'
 ## 2. 의존성과 기본 설정 준비 — 최초 한 번
 
 ```powershell
-uv sync --frozen
+uv sync --frozen --reinstall --no-cache --no-build
 npm.cmd ci --prefix frontend
 if (-not (Test-Path -LiteralPath '.env')) {
     Copy-Item -LiteralPath '.env.example' -Destination '.env'
@@ -70,7 +70,7 @@ SIMULATOR_DB_PATH=artifacts/simulator.sqlite
 ## 3. 개인 로그인 키와 Kafka 자격 생성 — 최초 한 번
 
 ```powershell
-uv run python scripts/setup-security.py --origin http://127.0.0.1:5173
+uv run --frozen python scripts/setup-security.py --origin http://127.0.0.1:5173
 ```
 
 다음 두 계정의 **사용자 ID와 개인 접근 키가 한 번만** 터미널에 표시됩니다. 개인 키를 별도로 안전하게 보관합니다.
@@ -90,7 +90,7 @@ npm run start:reset-key
 
 새 `Access key`를 한 번 표시하고 앱을 다시 시작합니다. 이 값으로 로그인하세요. operator의 ID·역할·기록 소유권, 다른 사용자, Kafka 자격은 유지합니다. 이전 operator 키는 재시작한 앱에서 사용할 수 없습니다. `.env.security`를 삭제하지 마세요.
 
-다른 사용자의 키를 재발급해야 한다면 API를 먼저 종료한 뒤 `uv run python scripts/setup-security.py --reset-user 사용자ID`를 사용하고 다시 시작합니다. `AUTH_USERS_JSON` 환경 변수가 있으면 파일의 키보다 우선하므로, 재발급 도구가 값을 노출하지 않고 중단합니다. 예전 `SIMULATOR_APPROVAL_TOKEN`은 더 이상 사용하지 않습니다.
+다른 사용자의 키를 재발급해야 한다면 API를 먼저 종료한 뒤 `uv run --frozen python scripts/setup-security.py --reset-user 사용자ID`를 사용하고 다시 시작합니다. `AUTH_USERS_JSON` 환경 변수가 있으면 파일의 키보다 우선하므로, 재발급 도구가 값을 노출하지 않고 중단합니다. 예전 `SIMULATOR_APPROVAL_TOKEN`은 더 이상 사용하지 않습니다.
 
 브라우저는 반드시 `http://127.0.0.1:5173`으로 엽니다. `localhost`, 다른 포트, 다른 Origin은 동일한 주소로 취급하지 않습니다. 화면 주소를 바꿀 때는 `.env.security`의 `APP_PUBLIC_ORIGIN`도 함께 바꾸고 API를 재시작합니다.
 
@@ -144,10 +144,10 @@ ollama pull qwen2.5-coder:7b
 프로젝트 루트에서 온도 예측 모델을 학습합니다.
 
 ```powershell
-uv run python -m backend.app.forecast.train
+uv run --frozen python -m backend.app.forecast.train
 ```
 
-`artifacts/models/reheater.json` 파일과 평가 결과가 나오면 완료입니다. 데이터가 그대로라면 매번 학습할 필요는 없습니다. 다른 CSV를 사용했다면 평가 결과의 `test_start_row`에 맞춰 `.env`의 `REPLAY_START_ROW`를 조정합니다.
+`artifacts/models/reheater.json` 파일, `.json.sha256` 검증 기록과 평가 결과가 나오면 완료입니다. 데이터가 그대로라면 매번 학습할 필요는 없습니다. 다른 CSV를 사용하려면 먼저 신뢰할 원본의 해시를 검토·등록하고, 평가 결과의 `test_start_row`에 맞춰 `.env`의 `REPLAY_START_ROW`를 조정합니다.
 
 ## 6. 개발 모드로 실행
 
@@ -164,7 +164,7 @@ CSV 재생 프로세스 → Kafka ───────────────�
 
 ```powershell
 Set-Location 'D:\01_Programming\08_AI\Agent\boiler-ops-agent'
-uv run python -m uvicorn backend.app.main:app --reload --reload-dir backend --host 127.0.0.1 --port 8000 --ws-max-size 1024 --ws-max-queue 8 --limit-concurrency 64 --timeout-keep-alive 5
+uv run --frozen python -m uvicorn backend.app.main:app --reload --reload-dir backend --host 127.0.0.1 --port 8000 --ws-max-size 1024 --ws-max-queue 8 --limit-concurrency 64 --timeout-keep-alive 5
 ```
 
 `Application startup complete`가 나오면 API 시작이 완료된 것입니다. Kafka 연결 여부는 이후 화면에서 별도로 확인합니다. `--reload --reload-dir backend`는 `backend/`의 Python 변경만 감시하므로 Trace·모델 파일 저장으로 재시작하지 않습니다. 자동 재시작 없이 확인하려면 두 옵션을 빼면 됩니다.
@@ -193,7 +193,7 @@ npm.cmd run dev -- --port 5173 --strictPort
 
 ```powershell
 Set-Location 'D:\01_Programming\08_AI\Agent\boiler-ops-agent'
-uv run python -m backend.app.replay.producer
+uv run --frozen python -m backend.app.replay.producer
 ```
 
 `sequence`가 증가하는 JSON 줄이 출력됩니다. 브라우저에서 Kafka·WebSocket이 `CONNECTED`, 관측 상태가 `LIVE`인지 확인합니다. Source Time은 현재 시각이 아니라 **CSV의 과거 시각**입니다.
@@ -308,8 +308,8 @@ Remove-Item Env:E2E_AGENT_REVIEW
 `artifacts/e2e/phase7/agent-review/improved/questions.json`에 질문별 도구·근거·답변·처리 시간과 결측·이력 부족 등 경계 상황을 저장합니다. 데스크톱·모바일 답변 캡처도 같은 폴더에 남습니다. 변경 전 `baseline/questions.json`이 있으면 비교하고, 없으면 현재 답변을 독립 검증합니다. 현재 코드에서 `baseline` 모드를 실행하면 현재 코드의 관측 기록이므로 과거 결과를 재현한 것으로 취급하지 않습니다.
 
 ```powershell
-uv run python scripts/build-guide.py
-uv run python scripts/check-pages-seo.py
+uv run --frozen python scripts/build-guide.py
+uv run --frozen python scripts/check-pages-seo.py
 node scripts/review-ui.mjs
 ```
 
@@ -337,3 +337,37 @@ node scripts/review-ui.mjs
 Google이 정책으로 읽는 위치는 도메인 루트의 `https://seo-gali.github.io/robots.txt`입니다. 이 프로젝트 경로의 사본은 루트 정책을 바꾸지 않습니다. 루트 robots의 404 응답은 크롤링 금지를 뜻하지 않습니다.
 
 로컬 검증은 생성 HTML의 색인 차단 태그·대표 URL·내부 링크·사이트맵과 JavaScript 없는 열람·중첩 404를 확인합니다. 실제 호스팅의 HTTP 헤더·색인 상태를 검증한 결과로 간주하지 않습니다.
+
+## 리소스 무결성 검사
+
+`npm start`는 먼저 실행 중인 앱의 포트를 확인하고, Python 패키지를 frozen lock에서 새로 복원한 뒤 시작합니다. 프런트 dev/build/preview도 `npm ci --ignore-scripts --no-audit --no-fund`로 lock의 아카이브 해시를 검증합니다. 설치 스크립트는 실행하지 않으며 패키지 버전·lock은 변경하지 않습니다. 인터넷 연결이 필요합니다. 수동 개발에서는 서버가 정지한 상태에서 위의 `uv sync --frozen --reinstall --no-cache --no-build`를 먼저 실행하고, 이후 동시 프로세스들은 준비된 환경을 사용합니다.
+
+| 대상 | 고정 기준과 자동 검사 |
+| --- | --- |
+| 원본 CSV·컬럼 정의서·센서 메타데이터·Pretendard | `infra/resource-integrity.json`의 SHA-256. 사용 전 검증한 핸들에서 읽으며, 폰트는 빌드·문서 생성·개발 요청 전에 검사 |
+| Ollama 모델 | 공식 manifest의 SHA-256과 모든 blob의 digest·크기. 시작·AI 호출 전에 전체 파일을 읽어 검증하고, 호출 전 서버의 모델 digest도 대조 |
+| Kafka | Compose의 `apache/kafka:3.9.1@sha256:…` 고정. Docker가 해당 digest로 가져오며, 시작 도구는 기준 파일과 설정 일치를 확인 |
+| 온도 예측 파일 | 신뢰한 CSV로 학습한 출력의 `.json.sha256` 기록. 기존 기록 누락·불일치는 자동 복구하지 않음 |
+| 프런트 빌드 결과 | `artifacts/integrity/frontend.json`. preview 시작 시 전체 목록·파일 해시, 요청 시 해당 파일 해시 검사. 진입 JS·CSS는 SRI, 지연 JS는 import map integrity 사용 |
+| 별도 검사 실행 파일 | Caddy·Gitleaks의 공식 배포 체크섬에서 도출한 실행 파일 SHA-256. 아래 검증 실행기를 통해 실행 |
+
+기존 CSV·예측 결과는 2026-11-21 사용자가 현재 파일의 검사 후 기준 등록을 승인했습니다. CSV 50,400행·118개 센서, 시간 순서와 기존 원본 지문, 예측의 원본 일치를 대조했습니다. 이 최초 등록은 배포자의 서명이나 출처 진위를 증명하지 않습니다. 기준 파일과 검증 코드를 함께 변경할 수 있는 권한은 별도로 보호해야 합니다.
+
+모든 모델 blob을 다시 읽으므로 수 GB 모델에서는 시작과 AI 질문에 검사 시간이 추가됩니다. SQLite·Trace·로그·시크릿처럼 실행 중 바뀌는 데이터는 고정 해시 대상에서 제외합니다. 사전에 설치한 OS·Python·uv·Node·npm·Docker·Ollama 자체는 이 검사의 신뢰 기반입니다. Docker daemon과 호스트를 장악한 공격자까지 검출하는 기능은 아닙니다.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify-resources.py --tools --frontend
+.venv\Scripts\python.exe scripts/check-resource-integrity.py
+node scripts/check-frontend-integrity.mjs
+```
+
+첫 명령은 기준을 갱신하지 않고 검사만 합니다. Caddy·Gitleaks가 설치되어 있지 않으면 `--tools`를 생략하고, 아직 화면을 빌드하지 않았다면 `--frontend`를 생략합니다. 다른 로컬 Ollama 저장소는 `OLLAMA_MODELS`, 검토한 별도 리소스 기준은 `BOILER_INTEGRITY_MANIFEST`로 지정할 수 있습니다. 비밀 파일을 기준 목록에 넣지 마세요.
+
+파일이 변경되면 원인을 확인하고 신뢰한 제공자의 체크섬·원본과 대조한 변경만 기준 파일에 반영합니다. 실패를 없애려고 현재 파일의 해시를 자동 등록하지 않습니다. 예측을 의도적으로 다시 학습하는 기존 명령만 새 출력의 `.sha256`을 생성합니다.
+
+```powershell
+.venv\Scripts\python.exe scripts/verify-resources.py --run gitleaks --version
+.venv\Scripts\python.exe scripts/verify-resources.py --run caddy run --config infra/Caddyfile --adapter caddyfile
+```
+
+Caddy 실행기는 먼저 프런트 전체를 검증하고 고정 import map의 CSP 해시를 자식 프로세스에 전달합니다. 실제 공개 실행은 기존 배포 승인·점검 절차를 따릅니다. 배포에는 신뢰한 빌드의 `frontend/dist`와 `artifacts/integrity/frontend.json`을 함께 전달하고, 기준·코드·정적 파일을 읽기 전용으로 보호해야 합니다. 브라우저 측 동적 모듈 검증은 import map integrity를 지원하는 브라우저가 필요합니다. 이번 실제 브라우저 검증은 설치된 Chrome으로 수행했습니다.

@@ -1,19 +1,20 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { importMapCsp, resourceIntegrity } from '../scripts/frontend-integrity.mjs';
 
 const headers = { 'X-Frame-Options': 'DENY', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', 'Cache-Control': 'no-store',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()' };
 const contentSecurityPolicy = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'";
-export default defineConfig(({ mode }) => {
+export default defineConfig(({ mode, isPreview }) => {
   const apiPort = Number(loadEnv(mode, '.', 'BOILER_API_PORT').BOILER_API_PORT ?? '8000');
   if (!Number.isInteger(apiPort) || apiPort < 1024 || apiPort > 65535) throw new Error('Invalid BOILER_API_PORT');
   const proxy = { '/api': { target: `http://127.0.0.1:${apiPort}`, ws: true } };
   return {
     envPrefix: [],
-    plugins: [react()],
+    plugins: [react(), resourceIntegrity()],
     server: { proxy, headers, strictPort: true },
-    preview: { proxy, headers: { ...headers, 'Content-Security-Policy': contentSecurityPolicy }, strictPort: true },
-    build: { rollupOptions: { output: {
+    preview: { proxy, headers: { ...headers, 'Content-Security-Policy': contentSecurityPolicy.replace("script-src 'self';", `script-src 'self' ${isPreview ? importMapCsp() : ''};`) }, strictPort: true },
+    build: { cssCodeSplit: false, rollupOptions: { output: {
       onlyExplicitManualChunks: true,
       manualChunks(id) {
         if (id.endsWith('/three/build/three.core.js')) return 'three-core';

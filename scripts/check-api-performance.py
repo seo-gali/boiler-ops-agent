@@ -28,6 +28,7 @@ from backend.app.simulator.service import Simulator
 from backend.app.config import Settings
 from backend.app.domain import history
 from backend.app.replay.csv_source import rows
+from backend.app.integrity import record_forecast
 from backend.app.streaming import consumer
 from backend.app.websocket.hub import Hub
 from backend.app.security import Security as AppSecurity, Session
@@ -350,10 +351,13 @@ def model_transport():
     supplied = []
 
     def open_model(request, timeout):
+        if request.full_url.endswith('/api/tags'):
+            return io.BytesIO(json.dumps({'models': [{'name': 'fixture', 'digest': '0' * 64}]}).encode())
         supplied.append((request.full_url, json.loads(request.data), timeout))
         return io.BytesIO(b'{"message":{"content":"{\\"value\\":7}"}}')
 
     with patch.object(model_client, 'os', SimpleNamespace(getenv=environment.get)), \
+            patch.object(model_client, 'verify_ollama', return_value='0' * 64), \
             patch.object(model_client, 'build_opener', return_value=SimpleNamespace(open=open_model)):
         result = model_client.model_json([{'role': 'user', 'content': 'fixture'}], {'type': 'object'})
         check('shared model transport retains JSON contract and timeout', result == {'value': 7}
@@ -396,6 +400,7 @@ async def forecast_models():
         with patch.dict(os.environ, {'FORECAST_MODEL_PATH': str(path)}):
             for name, expected in [('naive', 23), ('linear_ar', 49)]:
                 path.write_text(json.dumps({**model, 'selected': name}), encoding='utf-8')
+                record_forecast(path)
                 result = forecast(state)
                 check(f'{name}: model calculation and source contract', result['prediction'] == expected
                       and result['selected_model'] == name and result['input_value'] == 23
@@ -413,8 +418,14 @@ async def forecast_models():
             check('model input at validation cutoff is rejected', rejected)
 
 
+def pin_dataset_fixture(dataset):
+    target = Path(os.environ['BOILER_INTEGRITY_MANIFEST'])
+    target.write_text(json.dumps({'version': 1, 'files': {'dataset': {'sha256': hashlib.sha256(dataset.read_bytes()).hexdigest()}}}), encoding='utf-8')
+
+
 def history_queries():
-    with TemporaryDirectory(prefix="boiler-history-performance-") as directory:
+    with TemporaryDirectory(prefix="boiler-history-performance-") as directory, \
+            patch.dict(os.environ, {'BOILER_INTEGRITY_MANIFEST': str(Path(directory) / 'integrity.json')}):
         dataset = Path(directory) / "history.csv"
         with dataset.open("w", encoding="utf-8", newline="") as stream:
             writer = csv.writer(stream)
@@ -422,6 +433,7 @@ def history_queries():
             writer.writerows([[f"2025-01-01T00:0{index}:00", value, index]
                              for index, value in enumerate(["1.00", "", "bad", "3.50", "4.00"])])
         settings = Settings(dataset, 1000, "unused", "unused", "utf-8", "time", 5000, 120, 1)
+        pin_dataset_fixture(dataset)
         start, end = datetime(2025, 1, 1), datetime(2025, 1, 2)
         source_open = Path.open
         scans = 0
@@ -448,13 +460,21 @@ def history_queries():
                   other["tag"] == "other" and other["unit"] == "%" and other["sample_count"] == 2)
             with dataset.open("a", encoding="utf-8", newline="") as stream:
                 csv.writer(stream).writerow(["2025-01-01T00:05:00", "5.00", "5"])
+            try:
+                history.query_range(settings, "sensor ", "°C", start, end, 3)
+                rejected = False
+            except ValueError:
+                rejected = True
+            check('changed source requires an explicitly trusted new hash', rejected)
+            pin_dataset_fixture(dataset)
             updated = history.query_range(settings, "sensor ", "°C", start, end, 3)
             check("changed source is read afresh", updated["original_count"] == 6 and updated["max"] == 5,
                   original_count=updated["original_count"])
 
 
 async def history_boundaries():
-    with TemporaryDirectory(prefix="boiler-history-bits-") as directory:
+    with TemporaryDirectory(prefix="boiler-history-bits-") as directory, \
+            patch.dict(os.environ, {'BOILER_INTEGRITY_MANIFEST': str(Path(directory) / 'integrity.json')}):
         dataset = Path(directory) / "history.csv"
         values = ['1.00', '2', '3', '4', '5', '6', '7', '', 'bad', '-9', 'inf', '10', '11', '', '12', '13', '14']
         with dataset.open('w', encoding='utf-8', newline='') as stream:
@@ -462,6 +482,7 @@ async def history_boundaries():
             writer.writerow(['time', 'sensor ', 'other'])
             writer.writerows([[(datetime(2025, 1, 1) + timedelta(minutes=index)).isoformat(), value, index] for index, value in enumerate(values)])
         settings = Settings(dataset, 1000, 'unused', 'unused', 'utf-8', 'time', 5000, 120, 1)
+        pin_dataset_fixture(dataset)
         start, end = datetime(2025, 1, 1), datetime(2025, 1, 2)
         result = history.query_range(settings, 'sensor ', '°C', start, end, 5)
         check('sample indices preserve CSV rows and gaps across bitset bytes',
@@ -497,11 +518,13 @@ async def history_boundaries():
             writer = csv.writer(stream)
             writer.writerow(['time', 'sensor '])
             writer.writerow(['2025-01-01T00:00:00+00:00', '1'])
+        pin_dataset_fixture(dataset)
         app.state.boiler = SimpleNamespace(settings=settings, registry={'sensor ': {'unit': '°C'}})
         status, _ = await request('/api/history/range', query={'tag': 'sensor ', 'start': start.isoformat(), 'end': end.isoformat()})
         check('source timezone mismatch retains HTTP 422', status == 422, status=status)
         with dataset.open('a', encoding='utf-8', newline='') as stream:
             csv.writer(stream).writerow(['2025-01-01T02:00:00+01:00', '2'])
+        pin_dataset_fixture(dataset)
         try:
             history.metadata(settings)
             rejected = False
